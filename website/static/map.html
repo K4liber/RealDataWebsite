@@ -13,7 +13,16 @@
         <div id="mapid"></div>
         <script src="static/load_map.js"></script>
         <script>
-            var data = '{{ data }}'
+            let data_str = '{{ data }}'
+            console.log(data_str)
+
+            let data = JSON.parse('{{data | tojson}}');
+
+            if (data.error != null) {
+                console.log(data.error)
+            }
+
+            console.log(data)
             load_map(data);
         </script>
     </body>

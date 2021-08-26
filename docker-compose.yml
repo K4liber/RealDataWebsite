@@ -3,7 +3,7 @@ services:
   website:
     container_name: website
     environment:
-      - API_URL='http://13.36.229.179:5000'
+      - API_URL=http://35.180.181.135:5000
     build: ./website
   nginx:
     container_name: website_nginx
