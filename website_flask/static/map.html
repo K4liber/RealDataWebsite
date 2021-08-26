@@ -11,11 +11,12 @@
     <body>
         <p id="error"></p>
         <div id="mapid"></div>
+        <div id="footer">
+            DEVICE ID: <input type="text" id="device_id" name="device_id" value="any">
+            <input type="button" onclick="onSearchClick()" value="Search" id="search">
+        </div>
         <script src="static/load_map.js"></script>
         <script>
-            let data_str = '{{ data }}'
-            console.log(data_str)
-
             let data = JSON.parse('{{data | tojson}}');
 
             if (data.error != null) {

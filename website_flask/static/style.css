@@ -1,0 +1,30 @@
+*
+{
+    padding: 0;
+    margin: 0;
+}
+
+html, body
+{
+    height: 100%;
+}
+
+#mapid
+{
+    height: 100vh;
+}
+
+#error
+{
+    color: red;
+    margin: 0;
+}
+
+#footer
+{
+    position: relative;
+    z-index: 9999;
+    bottom: 25px;
+    background-color: #bbbbbb;
+    color: #333333;
+}

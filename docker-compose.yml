@@ -1,10 +1,10 @@
 version: '3.7'
 services:
-  website:
-    container_name: website
+  website_implementation:
+    container_name: website_implementation
     environment:
       - API_URL=http://35.180.181.135:5000
-    build: ./website
+    build: ./website_flask
   nginx:
     container_name: website_nginx
     build: ./nginx
@@ -15,4 +15,4 @@ services:
       - ./ssl:/etc/nginx/ssl
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf
     depends_on:
-      - website
+      - website_implementation
