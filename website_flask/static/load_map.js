@@ -1,20 +1,17 @@
-function getBasicMap(lat, lon) {
-    var mymap = L.map('mapid').setView([lat, lon], 13);
-
-    var tileLayer = L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token=pk.eyJ1IjoiazRsaWJlciIsImEiOiJja3NtczE4MmUwMW9jMnBucDZkdWYyZ2JzIn0.bRAZ1jLsbV1tY1-zNr9UzA', {
-        attribution: 'Map data',
+function getBasicMap() {
+    var map = L.map('map').fitWorld();
+    L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token=pk.eyJ1IjoiazRsaWJlciIsImEiOiJja3NtczE4MmUwMW9jMnBucDZkdWYyZ2JzIn0.bRAZ1jLsbV1tY1-zNr9UzA', {
+        attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
         maxZoom: 18,
         id: 'mapbox/streets-v11',
         tileSize: 512,
-        zoomOffset: -1,
-        accessToken: 'pk.eyJ1IjoiazRsaWJlciIsImEiOiJja3NtczE4MmUwMW9jMnBucDZkdWYyZ2JzIn0.bRAZ1jLsbV1tY1-zNr9UzA'
-    });
-    tileLayer.addTo(mymap);
-    return mymap
+        zoomOffset: -1
+    }).addTo(map);
+    return map
 }
 
-function addBasicMarker(map, lat, lon) {
-    var marker = L.marker([lat, lon]).addTo(map);
+function addBasicMarker(map, latLng) {
+    let marker = L.marker(latLng).addTo(map);
     marker.bindPopup("" +
         "<div style='margin: 0 auto;'>" +
         "<img style='width: 80px;' src='static/images/avatar.jpg'/>" +
@@ -39,26 +36,24 @@ function addMarkers(map, data) {
 }
 
 function load_map(data) {
-    if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition((position) => {
-                let mainDeviceLat = position.coords.latitude
-                let mainDeviceLon = position.coords.longitude
+    var map = getBasicMap()
+    map.locate({setView: true, maxZoom: 16});
 
-                if (data !== null && data.hasOwnProperty('middle')) {
-                    var lat = data['middle']['latitude']
-                    var lon = data['middle']['longitude']
-                } else {
-                    var lat = mainDeviceLat
-                    var lon = mainDeviceLon
-                }
+    map.on('locationfound', (e) => {
+        if (data !== null && data.hasOwnProperty('middle')) {
+            var latlng = [data['middle']['latitude'], data['middle']['longitude']]
+        } else {
+            var latlng = e.latlng
+        }
 
-                let basicMap = getBasicMap(lat, lon)
-                addBasicMarker(basicMap, mainDeviceLat, mainDeviceLon)
-                addMarkers(basicMap, data)
-            });
-    } else {
-        alert("Geolocation is not supported by this browser")
-    }
+        map.setView(latlng, 13);
+        addBasicMarker(map, e.latlng)
+    });
+    map.on('locationerror', (error) => {
+        alert(error.message)
+    });
+
+    addMarkers(map, data)
 }
 
 function replaceQueryParam(param, newval, search) {
