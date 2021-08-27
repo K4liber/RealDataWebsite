@@ -23,16 +23,18 @@ function addBasicMarker(map, lat, lon) {
 }
 
 function addMarkers(map, data) {
-    for (let i = 0; i < data['devices'].length; i++) {
-        let device = data['devices'][i]
-        let localization = device['localization']
-        let device_id = device['device_id']
-        let marker = L.marker([localization['latitude'], localization['longitude']]).addTo(map);
-        marker.bindPopup("" +
-            "<div style='margin: 0 auto;'>" +
-            "<img style='width: 80px;' src='static/images/avatar.jpg'/>" +
-            "<br>" + device_id +
-            "</div>");
+    if (data !== null && data.hasOwnProperty('devices')) {
+        for (let i = 0; i < data['devices'].length; i++) {
+            let device = data['devices'][i]
+            let localization = device['localization']
+            let device_id = device['device_id']
+            let marker = L.marker([localization['latitude'], localization['longitude']]).addTo(map);
+            marker.bindPopup("" +
+                "<div style='margin: 0 auto;'>" +
+                "<img style='width: 80px;' src='static/images/avatar.jpg'/>" +
+                "<br>" + device_id +
+                "</div>");
+        }
     }
 }
 
@@ -42,7 +44,7 @@ function load_map(data) {
                 let mainDeviceLat = position.coords.latitude
                 let mainDeviceLon = position.coords.longitude
 
-                if (data['middle']) {
+                if (data !== null && data.hasOwnProperty('middle')) {
                     var lat = data['middle']['latitude']
                     var lon = data['middle']['longitude']
                 } else {
@@ -55,7 +57,7 @@ function load_map(data) {
                 addMarkers(basicMap, data)
             });
     } else {
-        x.innerHTML = "Geolocation is not supported by this browser.";
+        alert("Geolocation is not supported by this browser")
     }
 }
 
@@ -72,5 +74,15 @@ function onSearchClick() {
 
     if (device_id !== "") {
         window.location = '/' + replaceQueryParam('device_id', device_id, window.location.search)
+    }
+}
+
+function loadDeviceIds(device_ids) {
+    console.log("device ids: " + device_ids)
+
+    for (let i = 0; i < device_ids.length; i++) {
+        var deviceIdElement = document.createElement("option");
+        deviceIdElement.textContent = device_ids[i];
+        document.getElementById("device_ids").appendChild(deviceIdElement);
     }
 }

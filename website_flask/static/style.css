@@ -20,11 +20,17 @@ html, body
     margin: 0;
 }
 
-#footer
+#menu_holder {
+    height: 0;
+}
+
+#menu
 {
+    width: 20%;
     position: relative;
     z-index: 9999;
-    bottom: 25px;
+    left: 70vw;
+    top: 25px;
     background-color: #bbbbbb;
     color: #333333;
 }
