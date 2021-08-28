@@ -25,11 +25,13 @@ function addMarkers(map, data) {
             let device = data['devices'][i]
             let localization = device['localization']
             let device_id = device['device_id']
+            let timestamp = device['timestamp']
             let marker = L.marker([localization['latitude'], localization['longitude']]).addTo(map);
             marker.bindPopup("" +
                 "<div style='margin: 0 auto;'>" +
                 "<img style='width: 80px;' src='static/images/avatar.jpg'/>" +
                 "<br>" + device_id +
+                "<br>" + timestamp +
                 "</div>");
         }
     }

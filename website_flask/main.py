@@ -54,7 +54,7 @@ def mapview():
                             'longitude': float(localization_json['lon']) if 'lon' in localization_json else 0.0,
                             'latitude': localization_json['lat'] if 'lat' in localization_json else 0.0,
                         },
-                        'timestamp': localization_json['timestamp'],
+                        'timestamp': localization_json['timestampStr'],
                         'device_id': device_id
                     }
                 ]
