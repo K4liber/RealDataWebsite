@@ -71,4 +71,4 @@ def mapview():
     return render_template('map.html', data=data)
 
 
-app.run(host='0.0.0.0')
+app.run(host='0.0.0.0', port=8080)
