@@ -1,7 +1,7 @@
 <template>
 	<div class="content">
-		<div id="menu_holder">
-			<div id="menu">
+		<div id="map"></div>
+		<div id="menu">
 				<vue-element-loading :active="isLoading" :is-full-screen="false"
 									 background-color="rgba(255, 255, 255, .7)" text="Waiting for API response"/>
 				DEVICE ID:
@@ -12,11 +12,15 @@
 						{{ device_id }} ({{ timestamp }})
 					</option>
 				</datalist>
-				<button @click="pick_timestamp" id="pick_timestamp" :disabled="chosenDeviceId == null">
-					Pick timestamp
+				<button @click="pick_timestamp" id="pick_timestamp" :hidden="chosenDeviceId == null">
+					Load history
 				</button>
-				<button @click="remove_path" id="remove_path" :disabled="polyline == null">
-					Remove path
+				<button @click="remove_path" id="remove_path" :hidden="polyline == null">
+					Hide path
+				</button>
+				<button @click="draw_polyline" id="show_path"
+						:hidden="polyline != null || datetime_from == null || datetime_to == null">
+					Show path
 				</button>
 				<span :hidden="this.total_distance === 0">
 					Total distance:
@@ -26,16 +30,15 @@
 					{{  this.total_distance <= 1000 ? "[m]" : "[km]" }}
 				</span>
 				<div id="time-range">
-					<p>Time Range: <span class="slider-time"></span> - <span class="slider-time2"></span>
-					</p>
-
+					<div id="slider-caption">
+						<div id="slider-from"></div>
+						<div id="slider-to"></div>
+					</div>
 					<div class="sliders_step1">
 						<div id="slider-range"></div>
 					</div>
 				</div>
 			</div>
-		</div>
-		<div id="map"></div>
 	</div>
 </template>
 <script>
@@ -52,37 +55,36 @@ Icon.Default.mergeOptions({
 	iconUrl: require('leaflet/dist/images/marker-icon.png'),
 	shadowUrl: require('leaflet/dist/images/marker-shadow.png'),
 });
-axios.defaults.headers.get['Access-Control-Allow-Origin'] = '*'
-import image from "../assets/avatar.jpg"
+
 import {env} from "../../config/env";
 import $ from 'jquery';
 import 'jquery-ui-bundle';
 import 'jquery-ui-bundle/jquery-ui.min.css';
 
 class Localization {
-  constructor(lat, lon) {
+  constructor(lat, lon, timestampStr) {
     this.lat = lat;
     this.lon = lon;
+	this.timestampStr = timestampStr;
   }
 }
 
 function calcCrow(lat1, lon1, lat2, lon2) {
-  var R = 6371000; // m
-  var dLat = toRad(lat2-lat1);
-  var dLon = toRad(lon2-lon1);
-  var lat1 = toRad(lat1);
-  var lat2 = toRad(lat2);
+	let R = 6371000; // m
+	let dLat = toRad(lat2-lat1);
+	let dLon = toRad(lon2-lon1);
+	let lat1_rad = toRad(lat1);
+	let lat2_rad = toRad(lat2);
 
-  var a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-	Math.sin(dLon/2) * Math.sin(dLon/2) * Math.cos(lat1) * Math.cos(lat2);
-  var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-  var d = R * c;
-  return d;
+	let a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+	Math.sin(dLon/2) * Math.sin(dLon/2) * Math.cos(lat1_rad) * Math.cos(lat2_rad);
+	let c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+	let d = R * c;
+	return d;
 }
 
-// Converts numeric degrees to radians
-function toRad(Value) {
-	return Value * Math.PI / 180;
+function toRad(degrees) {
+	return degrees * Math.PI / 180;
 }
 
 export default {
@@ -111,14 +113,12 @@ export default {
 		datetime_from: {
 			deep: true,
 			handler(new_value, old_value) {
-				console.log(new_value)
 				this.draw_polyline()
 			}
 		},
 		datetime_to: {
 			deep: true,
 			handler(new_value, old_value) {
-				console.log(new_value)
 				this.draw_polyline()
 			}
 		}
@@ -129,7 +129,6 @@ export default {
 			map: null,
             msg: 'Real Data Website',
 			devices: [],
-			image: image,
 			device_id_to_timestamp: null,
 			history: null,
 			datetime_from: null,
@@ -155,6 +154,7 @@ export default {
 			this.device_id_to_timestamp = JSON.parse(response.data.replaceAll('\'', '"'))
 		})
 		this.load_map();
+		this.map.invalidateSize();
 	},
 	beforeDestroy() {
 		this.map.remove();
@@ -199,11 +199,11 @@ export default {
 			if (points.length > 1) {
 				this.marker_from = L.marker(points[0], {icon: redIcon});
 				this.marker_from.bindPopup(
-					this.getMarker("Start point", this.datetime_from.toLocaleString("en-US")));
+					this.getMarker("Start point", this.datetime_from.toLocaleString("pl")));
 				this.marker_from.addTo(this.map)
 				this.marker_to = L.marker(points[points.length - 1], {icon: redIcon});
 				this.marker_to.bindPopup(
-					this.getMarker("End point", this.datetime_to.toLocaleString("en-US")));
+					this.getMarker("End point", this.datetime_to.toLocaleString("pl")));
 				this.marker_to.addTo(this.map)
 			}
 
@@ -231,8 +231,6 @@ export default {
 		remove_path() {
 			this.clear_path_elements()
 			this.polyline = null
-			this.datetime_from = null
-			this.datetime_to = null
 		},
 		pick_timestamp() {
 			this.isLoading = true;
@@ -244,12 +242,12 @@ export default {
 
 				for (let index = 0; index < localizations.length; index++) {
 					let localization = localizations[index]
-					// Runs 5 times, with values of step 0 through 4.
 					this.history.set(
 						Date.parse(localization.timestampStr),
 						new Localization(
 							localization.lat,
-							localization.lon
+							localization.lon,
+							localization.timestampStr
 						)
 					)
 				}
@@ -257,12 +255,13 @@ export default {
 				this.isLoading = false;
 				var dt_from = localizations[0].timestampStr
 				var dt_to = localizations[localizations.length - 1].timestampStr
-				//var dt_to = "2014/11/24 16:37:43";
 
-				$('.slider-time').html(dt_from);
-				$('.slider-time2').html(dt_to);
-				var min_val = Date.parse(dt_from)/1000;
-				var max_val = Date.parse(dt_to)/1000;
+				$('#slider-from').html(dt_from);
+				$('#slider-to').html(dt_to);
+				this.datetime_from = Date.parse(dt_from)
+				this.datetime_to = Date.parse(dt_to)
+				var min_val = this.datetime_from/1000;
+				var max_val = this.datetime_to/1000;
 				var mapComponent = this
 
 				$("#slider-range").slider({
@@ -272,29 +271,13 @@ export default {
 					step: 10,
 					values: [min_val, max_val],
 					slide: function (e, ui) {
-						var dt_cur_from = new Date(ui.values[0]*1000); //.format("yyyy-mm-dd hh:ii:ss");
-						mapComponent.datetime_from = dt_cur_from
-						$('.slider-time').html(mapComponent.formatDT(dt_cur_from));
-
-						var dt_cur_to = new Date(ui.values[1]*1000); //.format("yyyy-mm-dd hh:ii:ss");
-						mapComponent.datetime_to = dt_cur_to
-						$('.slider-time2').html(mapComponent.formatDT(dt_cur_to));
+						mapComponent.datetime_from = new Date(ui.values[0]*1000);
+						$('#slider-from').html(mapComponent.datetime_from.toLocaleString("pl"));
+						mapComponent.datetime_to = new Date(ui.values[1]*1000);
+						$('#slider-to').html(mapComponent.datetime_to.toLocaleString("pl"));
 					}
 				});
 			})
-		},
-		zeroPad(num, places) {
-			let zero = places - num.toString().length + 1;
-			return Array(+(zero > 0 && zero)).join("0") + num;
-		},
-		formatDT(__dt) {
-			let year = __dt.getFullYear();
-			let month = this.zeroPad(__dt.getMonth()+1, 2);
-			let date = this.zeroPad(__dt.getDate(), 2);
-			let hours = this.zeroPad(__dt.getHours(), 2);
-			let minutes = this.zeroPad(__dt.getMinutes(), 2);
-			let seconds = this.zeroPad(__dt.getSeconds(), 2);
-			return year + '-' + month + '-' + date + ' ' + hours + ':' + minutes + ':' + seconds;
 		},
 		addBasicMarker(map, latLng) {
 			let greenIcon = L.icon({
@@ -304,8 +287,8 @@ export default {
         		popupAnchor:  [0, -36]  // popup position
 			})
 			let marker = L.marker(latLng, {icon: greenIcon}).addTo(map);
-			var today  = new Date();
-			marker.bindPopup(this.getMarker("Your device", today.toLocaleString("en-US")));
+			let today  = new Date();
+			marker.bindPopup(this.getMarker("Your device", today.toLocaleString("pl")));
 		},
 		getMarker(device_id, timestamp) {
 			return "<div style='margin: 0 auto;'>" +
@@ -360,10 +343,6 @@ html, body, #content
     height: 100vh;
 }
 
-#menu_holder {
-    height: 0;
-}
-
 #menu
 {
 	min-height: 80px;
@@ -371,7 +350,7 @@ html, body, #content
     position: relative;
     z-index: 9999;
     left: 5vw;
-    top: 10px;
+    bottom: 99vh;
     background-color: #bbbbbb;
     color: #333333;
 }
@@ -474,4 +453,22 @@ html, body, #content
 .ui-slider a:focus {
     outline:none;
 }
+
+#slider-from{
+	float:left;
+	width:43vw;
+	margin: 1vw;
+}
+
+#slider-to{
+	float:left;
+	text-align:right;
+	width:43vw;
+	margin: 1vw;
+}
+
+#slider-caption{
+	width: 90vw;
+}
+
 </style>
