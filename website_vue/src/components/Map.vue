@@ -2,6 +2,8 @@
 	<div class="content">
 		<div id="menu_holder">
 			<div id="menu">
+				<vue-element-loading :active="isLoading" :is-full-screen="false"
+									 background-color="rgba(255, 255, 255, .7)" text="Waiting for API response"/>
 				DEVICE ID:
 				<input list="device_ids" name="device_id" id="device_id" v-model="chosenDeviceId">
 				<datalist id="device_ids">
@@ -12,6 +14,9 @@
 				</datalist>
 				<button @click="pick_timestamp" id="pick_timestamp" :disabled="chosenDeviceId == null">
 					Pick timestamp
+				</button>
+				<button @click="remove_path" id="remove_path" :disabled="polyline == null">
+					Remove path
 				</button>
 				<span :hidden="this.total_distance === 0">
 					Total distance:
@@ -39,6 +44,7 @@ import "../assets/css/jquery-ui.css";
 import "leaflet/dist/leaflet.css";
 import { map, tileLayer, Icon } from "leaflet";
 import axios from "axios";
+import VueElementLoading from 'vue-element-loading'
 
 delete Icon.Default.prototype._getIconUrl;
 Icon.Default.mergeOptions({
@@ -81,6 +87,9 @@ function toRad(Value) {
 
 export default {
     name: 'Map',
+	components: {
+    	VueElementLoading
+  	},
 	watch: {
 		chosenDeviceId: {
 			deep: true,
@@ -124,9 +133,12 @@ export default {
 			device_id_to_timestamp: null,
 			history: null,
 			datetime_from: null,
+			marker_from: null,
 			datetime_to: null,
+			marker_to: null,
 			polyline: null,
-			total_distance: 0
+			total_distance: 0,
+			isLoading: false
         }
     },
 	mounted() {
@@ -149,9 +161,17 @@ export default {
 	},
 	methods: {
 		draw_polyline() {
-			if (this.polyline != null) {
-				this.polyline.remove()
+			if (this.datetime_from == null || this.datetime_to == null) {
+				return
 			}
+
+			this.clear_path_elements()
+			let redIcon = L.icon({
+				iconUrl: '/static/img/marker-icon-red.png',
+				shadowUrl: '/static/img/marker-shadow.png',
+				iconAnchor:   [13, 40],  // marker icon position
+        		popupAnchor:  [0, -36]  // popup position
+			})
 
 			let points = []
 			this.total_distance = 0
@@ -176,6 +196,17 @@ export default {
 				}
 			}
 
+			if (points.length > 1) {
+				this.marker_from = L.marker(points[0], {icon: redIcon});
+				this.marker_from.bindPopup(
+					this.getMarker("Start point", this.datetime_from.toLocaleString("en-US")));
+				this.marker_from.addTo(this.map)
+				this.marker_to = L.marker(points[points.length - 1], {icon: redIcon});
+				this.marker_to.bindPopup(
+					this.getMarker("End point", this.datetime_to.toLocaleString("en-US")));
+				this.marker_to.addTo(this.map)
+			}
+
 			this.polyline = new L.Polyline(points, {
 				color: 'red',
 				weight: 3,
@@ -184,7 +215,28 @@ export default {
 			});
 			this.polyline.addTo(this.map);
 		},
+		clear_path_elements() {
+			if (this.polyline != null) {
+				this.polyline.remove()
+			}
+
+			if (this.marker_from != null) {
+				this.marker_from.remove()
+			}
+
+			if (this.marker_to != null) {
+				this.marker_to.remove()
+			}
+		},
+		remove_path() {
+			this.clear_path_elements()
+			this.polyline = null
+			this.datetime_from = null
+			this.datetime_to = null
+		},
 		pick_timestamp() {
+			this.isLoading = true;
+
 			axios.get(env.API_URL + '/get_localizations?device_id=' + this.chosenDeviceId).then(response => {
 				console.log(response.data.replaceAll('\'', ''))
 				let localizations = JSON.parse(response.data.replaceAll('\'', ''))
@@ -202,6 +254,7 @@ export default {
 					)
 				}
 
+				this.isLoading = false;
 				var dt_from = localizations[0].timestampStr
 				var dt_to = localizations[localizations.length - 1].timestampStr
 				//var dt_to = "2014/11/24 16:37:43";
@@ -244,7 +297,13 @@ export default {
 			return year + '-' + month + '-' + date + ' ' + hours + ':' + minutes + ':' + seconds;
 		},
 		addBasicMarker(map, latLng) {
-			let marker = L.marker(latLng).addTo(map);
+			let greenIcon = L.icon({
+				iconUrl: '/static/img/marker-icon-green.png',
+				shadowUrl: '/static/img/marker-shadow.png',
+				iconAnchor:   [13, 40],  // marker icon position
+        		popupAnchor:  [0, -36]  // popup position
+			})
+			let marker = L.marker(latLng, {icon: greenIcon}).addTo(map);
 			var today  = new Date();
 			marker.bindPopup(this.getMarker("Your device", today.toLocaleString("en-US")));
 		},
@@ -307,6 +366,7 @@ html, body, #content
 
 #menu
 {
+	min-height: 80px;
     width: 90vw;
     position: relative;
     z-index: 9999;
