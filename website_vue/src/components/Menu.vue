@@ -1,167 +1,122 @@
 <template>
-	<div class="content">
-		<div id="map"></div>
-		<div id="menu">
-				<vue-element-loading :active="isLoading" :is-full-screen="false"
-									 background-color="rgba(255, 255, 255, .7)" text="Waiting for API response"/>
-				DEVICE ID:
-				<input list="device_ids" name="device_id" id="device_id" v-model="chosenDeviceId">
-				<datalist id="device_ids">
-					<option v-if="device_id_to_timestamp !== null"
-							v-for="(timestamp, device_id) in device_id_to_timestamp" :value="device_id">
-						{{ device_id }} ({{ timestamp }})
-					</option>
-				</datalist>
-				<button @click="pick_timestamp" id="pick_timestamp" :hidden="chosenDeviceId == null">
-					Load history
-				</button>
-				<button @click="remove_path" id="remove_path" :hidden="polyline == null">
-					Hide path
-				</button>
-				<button @click="draw_polyline" id="show_path"
-						:hidden="polyline != null || datetime_from == null || datetime_to == null">
-					Show path
-				</button>
-				<span :hidden="this.total_distance === 0">
-					Total distance:
-					{{  this.total_distance <= 1000 ?
-						Number.parseFloat(this.total_distance).toPrecision(6) :
-					    Number.parseFloat(this.total_distance / 1000).toPrecision(6) }}
-					{{  this.total_distance <= 1000 ? "[m]" : "[km]" }}
-				</span>
-				<div id="time-range">
-					<div id="slider-caption">
-						<div id="slider-from"></div>
-						<div id="slider-to"></div>
-					</div>
-					<div class="sliders_step1">
-						<div id="slider-range"></div>
-					</div>
-				</div>
+	<div id="menu">
+		<vue-element-loading :active="isLoading" :is-full-screen="false"
+							 background-color="rgba(255, 255, 255, .7)" text="Waiting for API response"/>
+		DEVICE ID:
+		<input list="device_ids" name="device_id" id="device_id" v-model="deviceId">
+		<datalist id="device_ids">
+			<option v-if="deviceIdToTimestamp !== null"
+					v-for="(timestamp, device_id) in deviceIdToTimestamp" :value="device_id">
+				{{ device_id }} ({{ timestamp }})
+			</option>
+		</datalist>
+		<button @click="pick_timestamp" id="pick_timestamp" :hidden="deviceId == null">
+			Load history
+		</button>
+		<button @click="remove_path" id="remove_path" :hidden="polyline == null">
+			Hide path
+		</button>
+		<button @click="draw_polyline" id="show_path"
+				:hidden="polyline != null || datetimeFrom == null || datetimeTo == null">
+			Show path
+		</button>
+		<span :hidden="this.totalDistance === 0">
+			Total distance: {{ totalDistanceString }}
+		</span>
+		<div id="time-range">
+			<div id="slider-caption">
+				<div id="slider-from"></div>
+				<div id="slider-to"></div>
 			</div>
+			<div class="sliders_step1">
+				<div id="slider-range"></div>
+			</div>
+		</div>
 	</div>
 </template>
+
 <script>
-
-import "../assets/css/jquery-ui.css";
-import "leaflet/dist/leaflet.css";
-import { map, tileLayer, Icon } from "leaflet";
-import axios from "axios";
 import VueElementLoading from 'vue-element-loading'
-
-delete Icon.Default.prototype._getIconUrl;
-Icon.Default.mergeOptions({
-	iconRetinaUrl: require('leaflet/dist/images/marker-icon-2x.png'),
-	iconUrl: require('leaflet/dist/images/marker-icon.png'),
-	shadowUrl: require('leaflet/dist/images/marker-shadow.png'),
-});
-
+import {mapGetters, mapMutations} from "vuex";
+import axios from "axios";
 import {env} from "../../config/env";
-import $ from 'jquery';
+import {calcCrow, getMarker} from "../function";
+import {Localization} from "../data-class";
+import $ from "jquery";
 import 'jquery-ui-bundle';
 import 'jquery-ui-bundle/jquery-ui.min.css';
 
-class Localization {
-  constructor(lat, lon, timestampStr) {
-    this.lat = lat;
-    this.lon = lon;
-	this.timestampStr = timestampStr;
-  }
-}
-
-function calcCrow(lat1, lon1, lat2, lon2) {
-	let R = 6371000; // m
-	let dLat = toRad(lat2-lat1);
-	let dLon = toRad(lon2-lon1);
-	let lat1_rad = toRad(lat1);
-	let lat2_rad = toRad(lat2);
-
-	let a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-	Math.sin(dLon/2) * Math.sin(dLon/2) * Math.cos(lat1_rad) * Math.cos(lat2_rad);
-	let c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-	let d = R * c;
-	return d;
-}
-
-function toRad(degrees) {
-	return degrees * Math.PI / 180;
-}
-
 export default {
-    name: 'Map',
+	name: "Menu",
 	components: {
     	VueElementLoading
   	},
+	computed: {
+		totalDistanceString: function () {
+			return (this.totalDistance <= 1000 ?
+				this.totalDistance.toPrecision(6) :
+				(this.totalDistance / 1000).toPrecision(6)) +
+				(this.totalDistance <= 1000 ? " [m]" : " [km]")
+		},
+		...mapGetters([
+			'map',
+			'chosenDeviceId'
+		])
+	},
+    data () {
+        return {
+			deviceId: null,
+			devices: [],
+			deviceIdToTimestamp: null,
+			history: null,
+			datetimeFrom: null,
+			marker_from: null,
+			datetimeTo: null,
+			marker_to: null,
+			polyline: null,
+			totalDistance: 0,
+			isLoading: false
+        }
+    },
 	watch: {
-		chosenDeviceId: {
+		deviceId: {
 			deep: true,
 			handler(new_device_id, old_device_id) {
 				if (new_device_id === "") {
-					this.chosenDeviceId = null
+					this.setChosenDeviceId(null)
 				} else {
 					axios.get(env.API_URL + '/get_localization?device_id=' + new_device_id).then(response => {
 						let localization = response.data
 						let latLng = [localization.lat, localization.lon]
 						let marker = L.marker(latLng).addTo(this.map);
-						marker.bindPopup(this.getMarker(new_device_id, localization.timestampStr));
+						marker.bindPopup(getMarker(new_device_id, localization.timestampStr));
 						this.map.setView(latLng, 16)
-						this.chosenDeviceId = new_device_id
+						this.setChosenDeviceId(new_device_id)
 					})
 				}
 			}
 		},
-		datetime_from: {
+		datetimeFrom: {
 			deep: true,
 			handler(new_value, old_value) {
 				this.draw_polyline()
 			}
 		},
-		datetime_to: {
+		datetimeTo: {
 			deep: true,
 			handler(new_value, old_value) {
 				this.draw_polyline()
 			}
 		}
 	},
-    data () {
-        return {
-			chosenDeviceId: null,
-			map: null,
-            msg: 'Real Data Website',
-			devices: [],
-			device_id_to_timestamp: null,
-			history: null,
-			datetime_from: null,
-			marker_from: null,
-			datetime_to: null,
-			marker_to: null,
-			polyline: null,
-			total_distance: 0,
-			isLoading: false
-        }
-    },
-	mounted() {
-		this.map = map("map").fitWorld();
-		tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token=pk.eyJ1IjoiazRsaWJlciIsImEiOiJja3NtczE4MmUwMW9jMnBucDZkdWYyZ2JzIn0.bRAZ1jLsbV1tY1-zNr9UzA', {
-			attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
-			maxZoom: 18,
-			id: 'mapbox/streets-v11',
-			tileSize: 512,
-			zoomOffset: -1
-		}).addTo(this.map);
-		console.log(env)
+	mounted: function() {
 		axios.get(env.API_URL + '/get_devices_timestamps').then(response => {
-			this.device_id_to_timestamp = JSON.parse(response.data.replaceAll('\'', '"'))
+			this.deviceIdToTimestamp = JSON.parse(response.data.replaceAll('\'', '"'))
 		})
-		this.load_map();
-		this.map.invalidateSize();
-	},
-	beforeDestroy() {
-		this.map.remove();
 	},
 	methods: {
 		draw_polyline() {
-			if (this.datetime_from == null || this.datetime_to == null) {
+			if (this.datetimeFrom == null || this.datetimeTo == null) {
 				return
 			}
 
@@ -174,10 +129,10 @@ export default {
 			})
 
 			let points = []
-			this.total_distance = 0
+			this.totalDistance = 0
 
 			for (let [key, value] of this.history) {
-				if (key >= this.datetime_from && key <= this.datetime_to) {
+				if (key >= this.datetimeFrom && key <= this.datetimeTo) {
 					if (points.length === 0) {
 						points.push(
 							new L.LatLng(value.lat, value.lon)
@@ -185,7 +140,7 @@ export default {
 					} else {
 						let previous_point = points[points.length - 1]
 						let distance = calcCrow(value.lat, value.lon, previous_point.lat, previous_point.lng)
-						this.total_distance += distance
+						this.totalDistance += distance
 
 						if (distance > 100) {
 							points.push(
@@ -199,11 +154,11 @@ export default {
 			if (points.length > 1) {
 				this.marker_from = L.marker(points[0], {icon: redIcon});
 				this.marker_from.bindPopup(
-					this.getMarker("Start point", this.datetime_from.toLocaleString("pl")));
+					getMarker("Start point", this.datetimeFrom.toLocaleString("pl")));
 				this.marker_from.addTo(this.map)
 				this.marker_to = L.marker(points[points.length - 1], {icon: redIcon});
 				this.marker_to.bindPopup(
-					this.getMarker("End point", this.datetime_to.toLocaleString("pl")));
+					getMarker("End point", this.datetimeTo.toLocaleString("pl")));
 				this.marker_to.addTo(this.map)
 			}
 
@@ -258,10 +213,10 @@ export default {
 
 				$('#slider-from').html(dt_from);
 				$('#slider-to').html(dt_to);
-				this.datetime_from = Date.parse(dt_from)
-				this.datetime_to = Date.parse(dt_to)
-				var min_val = this.datetime_from/1000;
-				var max_val = this.datetime_to/1000;
+				this.datetimeFrom = Date.parse(dt_from)
+				this.datetimeTo = Date.parse(dt_to)
+				var min_val = this.datetimeFrom/1000;
+				var max_val = this.datetimeTo/1000;
 				var mapComponent = this
 
 				$("#slider-range").slider({
@@ -271,87 +226,32 @@ export default {
 					step: 10,
 					values: [min_val, max_val],
 					slide: function (e, ui) {
-						mapComponent.datetime_from = new Date(ui.values[0]*1000);
-						$('#slider-from').html(mapComponent.datetime_from.toLocaleString("pl"));
-						mapComponent.datetime_to = new Date(ui.values[1]*1000);
-						$('#slider-to').html(mapComponent.datetime_to.toLocaleString("pl"));
+						mapComponent.datetimeFrom = new Date(ui.values[0]*1000);
+						$('#slider-from').html(mapComponent.datetimeFrom.toLocaleString("pl"));
+						mapComponent.datetimeTo = new Date(ui.values[1]*1000);
+						$('#slider-to').html(mapComponent.datetimeTo.toLocaleString("pl"));
 					}
 				});
 			})
 		},
-		addBasicMarker(map, latLng) {
-			let greenIcon = L.icon({
-				iconUrl: '/static/img/marker-icon-green.png',
-				shadowUrl: '/static/img/marker-shadow.png',
-				iconAnchor:   [13, 40],  // marker icon position
-        		popupAnchor:  [0, -36]  // popup position
-			})
-			let marker = L.marker(latLng, {icon: greenIcon}).addTo(map);
-			let today  = new Date();
-			marker.bindPopup(this.getMarker("Your device", today.toLocaleString("pl")));
-		},
-		getMarker(device_id, timestamp) {
-			return "<div style='margin: 0 auto;'>" +
-					"<img style='width: 80px;' :src='image'/>" +
-					"<br>" + device_id +
-					"<br>" + timestamp +
-					"</div>"
-		},
-		addMarkers(map) {
-			for (let i = 0; i < this.devices.length; i++) {
-				let device = this.devices[i]
-				let localization = device['localization']
-				let device_id = device['device_id']
-				let timestamp = device['timestamp']
-				let marker = L.marker([localization['latitude'], localization['longitude']]).addTo(map);
-				marker.bindPopup("" +
-					"<div style='margin: 0 auto;'>" +
-					"<img style='width: 80px;' :src='image'/>" +
-					"<br>" + device_id +
-					"<br>" + timestamp +
-					"</div>");
-			}
-		},
-		load_map() {
-			this.map.locate({setView: true, maxZoom: 16});
-			this.map.on('locationfound', (e) => {
-				this.map.setView(e.latlng, 13);
-				this.addBasicMarker(this.map, e.latlng)
-			});
-			this.map.on('locationerror', (error) => {
-				alert(error.message)
-			});
-
-			this.addMarkers(this.map)
-		}
+		...mapMutations([
+			'setChosenDeviceId'
+		]),
 	}
 }
 </script>
 
-<!-- Add "scoped" attribute to limit CSS to this component only -->
-<style>
-
-html, body, #content
-{
-	height: 100vh;
-	padding: 0;
-    margin: 0;
-}
-
-#map
-{
-    height: 100vh;
-}
+<style scoped>
 
 #menu
 {
 	min-height: 80px;
-    width: 90vw;
+    width: 96vw;
     position: relative;
     z-index: 9999;
-    left: 5vw;
+    left: 2vw;
     bottom: 99vh;
-    background-color: #bbbbbb;
+    background-color: rgba(230, 230, 230, 0.9);
     color: #333333;
 }
 
@@ -456,19 +356,19 @@ html, body, #content
 
 #slider-from{
 	float:left;
-	width:43vw;
+	width:46vw;
 	margin: 1vw;
 }
 
 #slider-to{
 	float:left;
 	text-align:right;
-	width:43vw;
+	width:46vw;
 	margin: 1vw;
 }
 
 #slider-caption{
-	width: 90vw;
+	width: 96vw;
 }
 
 </style>
