@@ -5,3 +5,10 @@ export class Localization {
 	this.timestampStr = timestampStr;
   }
 }
+
+export class DeviceTimestamp {
+  constructor(device_id, timestampStr) {
+    this.device_id = device_id;
+	this.timestampStr = timestampStr;
+  }
+}

@@ -5,9 +5,9 @@
 		DEVICE ID:
 		<input list="device_ids" name="device_id" id="device_id" v-model="deviceId">
 		<datalist id="device_ids">
-			<option v-if="deviceIdToTimestamp !== null"
-					v-for="(timestamp, device_id) in deviceIdToTimestamp" :value="device_id">
-				{{ device_id }} ({{ timestamp }})
+			<option v-if="deviceTimestamps !== null"
+					v-for="deviceTimestamp in deviceTimestamps" :value="deviceTimestamp.device_id">
+				{{ deviceTimestamp.device_id }} ({{ deviceTimestamp.timestampStr }})
 			</option>
 		</datalist>
 		<button @click="pick_timestamp" id="pick_timestamp" :hidden="deviceId == null">
@@ -41,7 +41,7 @@ import {mapGetters, mapMutations} from "vuex";
 import axios from "axios";
 import {env} from "../../config/env";
 import {calcCrow, getMarker} from "../function";
-import {Localization} from "../data-class";
+import {Localization, DeviceTimestamp} from "../data-class";
 import $ from "jquery";
 import 'jquery-ui-bundle';
 import 'jquery-ui-bundle/jquery-ui.min.css';
@@ -67,7 +67,7 @@ export default {
         return {
 			deviceId: null,
 			devices: [],
-			deviceIdToTimestamp: null,
+			deviceTimestamps: [],
 			history: null,
 			datetimeFrom: null,
 			marker_from: null,
@@ -86,7 +86,7 @@ export default {
 					this.setChosenDeviceId(null)
 				} else {
 					axios.get(env.API_URL + '/get_localization?device_id=' + new_device_id).then(response => {
-						let localization = response.data
+						let localization = JSON.parse(response.data)
 						let latLng = [localization.lat, localization.lon]
 						let marker = L.marker(latLng).addTo(this.map);
 						marker.bindPopup(getMarker(new_device_id, localization.timestampStr));
@@ -111,7 +111,14 @@ export default {
 	},
 	mounted: function() {
 		axios.get(env.API_URL + '/get_devices_timestamps').then(response => {
-			this.deviceIdToTimestamp = JSON.parse(response.data.replaceAll('\'', '"'))
+			let response_list = JSON.parse(response.data.replaceAll('\'', ''))
+
+			for (let index = 0; index < response_list.length; index++) {
+				let deviceTimestamp = response_list[index]
+				this.deviceTimestamps.push(
+					new DeviceTimestamp(deviceTimestamp.device_id, deviceTimestamp.timestamp_str)
+				)
+			}
 		})
 	},
 	methods: {
@@ -150,6 +157,8 @@ export default {
 					}
 				}
 			}
+
+			console.log(points)
 
 			if (points.length > 1) {
 				this.marker_from = L.marker(points[0], {icon: redIcon});
@@ -191,25 +200,24 @@ export default {
 			this.isLoading = true;
 
 			axios.get(env.API_URL + '/get_localizations?device_id=' + this.chosenDeviceId).then(response => {
-				console.log(response.data.replaceAll('\'', ''))
 				let localizations = JSON.parse(response.data.replaceAll('\'', ''))
-				this.history = new Map();
+				this.history = new Map()
 
 				for (let index = 0; index < localizations.length; index++) {
-					let localization = localizations[index]
+					let element = localizations[index]
 					this.history.set(
-						Date.parse(localization.timestampStr),
+						Date.parse(element.timestamp_str),
 						new Localization(
-							localization.lat,
-							localization.lon,
-							localization.timestampStr
+							element.lat,
+							element.lon,
+							element.timestamp_str
 						)
 					)
 				}
 
 				this.isLoading = false;
-				var dt_from = localizations[0].timestampStr
-				var dt_to = localizations[localizations.length - 1].timestampStr
+				var dt_from = localizations[0].timestamp_str
+				var dt_to = localizations[localizations.length - 1].timestamp_str
 
 				$('#slider-from').html(dt_from);
 				$('#slider-to').html(dt_to);
