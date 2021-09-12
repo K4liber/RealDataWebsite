@@ -89,7 +89,7 @@ export default {
 						let localization = JSON.parse(response.data)
 						let latLng = [localization.lat, localization.lon]
 						let marker = L.marker(latLng).addTo(this.map);
-						marker.bindPopup(getMarker(new_device_id, localization.timestampStr));
+						marker.bindPopup(getMarker(new_device_id, localization.timestamp_str));
 						this.map.setView(latLng, 16)
 						this.setChosenDeviceId(new_device_id)
 					})
