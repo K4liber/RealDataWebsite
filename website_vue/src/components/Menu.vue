@@ -1,5 +1,6 @@
 <template>
 	<div id="menu">
+		<device-details ref="deviceDetails"/>
 		<vue-element-loading :active="isLoading" :is-full-screen="false"
 							 background-color="rgba(255, 255, 255, .7)" text="Waiting for API response"/>
 		DEVICE ID:
@@ -10,6 +11,9 @@
 				{{ deviceTimestamp.device_id }} ({{ deviceTimestamp.timestampStr }})
 			</option>
 		</datalist>
+		<button @click="show_details" id="show_details" :hidden="deviceId == null">
+			Show details
+		</button>
 		<button @click="pick_timestamp" id="pick_timestamp" :hidden="deviceId == null">
 			Load history
 		</button>
@@ -45,11 +49,14 @@ import {Localization, DeviceTimestamp} from "../data-class";
 import $ from "jquery";
 import 'jquery-ui-bundle';
 import 'jquery-ui-bundle/jquery-ui.min.css';
+import DeviceDetails from "./DeviceDetails";
+
 
 export default {
 	name: "Menu",
 	components: {
-    	VueElementLoading
+    	VueElementLoading,
+		DeviceDetails
   	},
 	computed: {
 		totalDistanceString: function () {
@@ -195,6 +202,10 @@ export default {
 		remove_path() {
 			this.clear_path_elements()
 			this.polyline = null
+		},
+		show_details() {
+			console.log("Menu.vue show_details()")
+			this.$refs.deviceDetails.show();
 		},
 		pick_timestamp() {
 			this.isLoading = true;
