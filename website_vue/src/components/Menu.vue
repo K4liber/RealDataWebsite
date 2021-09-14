@@ -45,12 +45,12 @@ import {mapGetters, mapMutations} from "vuex";
 import axios from "axios";
 import {env} from "../../config/env";
 import {calcCrow, getMarker} from "../function";
-import {Localization, DeviceTimestamp} from "../data-class";
+import {DeviceTimestamp, Localization} from "../data-class";
 import $ from "jquery";
 import 'jquery-ui-bundle';
 import 'jquery-ui-bundle/jquery-ui.min.css';
 import DeviceDetails from "./DeviceDetails";
-
+import dateFormat from "dateformat";
 
 export default {
 	name: "Menu",
@@ -96,7 +96,12 @@ export default {
 						let localization = JSON.parse(response.data)
 						let latLng = [localization.lat, localization.lon]
 						let marker = L.marker(latLng).addTo(this.map);
-						marker.bindPopup(getMarker(new_device_id, localization.timestamp_str));
+						marker.bindPopup(
+							getMarker(
+								"Chosen device",
+								new_device_id,
+								localization.timestamp_str,
+							));
 						this.map.setView(latLng, 16)
 						this.setChosenDeviceId(new_device_id)
 					})
@@ -170,11 +175,21 @@ export default {
 			if (points.length > 1) {
 				this.marker_from = L.marker(points[0], {icon: redIcon});
 				this.marker_from.bindPopup(
-					getMarker("Start point", this.datetimeFrom.toLocaleString("pl")));
+					getMarker(
+						"Start point",
+						this.chosenDeviceId,
+						this.datetimeFrom.toLocaleString("pl"),
+						dateFormat(this.datetimeFrom, "yyyy-mm-dd-HH-MM-ss")
+					));
 				this.marker_from.addTo(this.map)
 				this.marker_to = L.marker(points[points.length - 1], {icon: redIcon});
 				this.marker_to.bindPopup(
-					getMarker("End point", this.datetimeTo.toLocaleString("pl")));
+					getMarker(
+						"End point",
+						this.chosenDeviceId,
+						this.datetimeTo.toLocaleString("pl"),
+						dateFormat(this.datetimeTo, "yyyy-mm-dd-HH-MM-ss")
+					));
 				this.marker_to.addTo(this.map)
 			}
 
@@ -205,6 +220,7 @@ export default {
 		},
 		show_details() {
 			console.log("Menu.vue show_details()")
+			this.$refs.deviceDetails.timestamp = new Date(Date.now());
 			this.$refs.deviceDetails.show();
 		},
 		pick_timestamp() {

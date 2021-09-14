@@ -58,7 +58,7 @@ export default {
 			})
 			let marker = L.marker(latLng, {icon: greenIcon}).addTo(map);
 			let today  = new Date();
-			marker.bindPopup(getMarker("Your device", today.toLocaleString("pl")));
+			marker.bindPopup(getMarker("Your device", null, today.toLocaleString("pl")));
 		},
 		...mapMutations([
 			'setMap'

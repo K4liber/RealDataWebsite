@@ -46,6 +46,7 @@
     "copy-webpack-plugin": "^4.0.1",
     "cross-spawn": "^5.0.1",
     "css-loader": "^0.28.0",
+    "dateformat": "^4.5.1",
     "dotenv": "^10.0.0",
     "dotenv-webpack": "^7.0.3",
     "eslint": "^4.15.0",

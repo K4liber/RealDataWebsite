@@ -1,10 +1,14 @@
 import {env} from "../config/env";
 
-export function getMarker(device_id, timestamp) {
-	let imgSrc = env.API_URL + '/view?device_id=' + device_id;
+export function getMarker(title, device_id, timestamp, view_timestamp) {
+	let imgSrc = env.API_URL + '/view?device_id=' + device_id +
+		(view_timestamp ? ('&timestamp=' + view_timestamp) : '');
 	return "<div style='margin: 0 auto;text-align: center;'>" +
-		"<img style='height:80px;max-width:80px;width: expression(this.width > 80 ? 80: true);' src='" + imgSrc + "'/>" +
-		"<div>ID: " + device_id + "</div>" +
+		"<div>" + title + "</div>" +
+		(device_id ? ("<img alt='' " +
+			"style='height:80px;max-width:80px;width: expression(this.width > 80 ? 80: true);'" +
+		" src='" + imgSrc + "'/>") : "")  +
+		(device_id ? ("<div>ID: " + device_id + "</div>") : "")  +
 		"<div>T: " + timestamp + "</div>" +
 		"</div>"
 }
