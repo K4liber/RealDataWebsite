@@ -15,14 +15,18 @@
 			Show details
 		</button>
 		<button @click="pick_timestamp" id="pick_timestamp" :hidden="deviceId == null">
-			Load history
+			{{ this.history ? "Reload history" : "Load history" }}
 		</button>
-		<button @click="remove_path" id="remove_path" :hidden="polyline == null">
-			Hide path
+		<button @click="remove_history" id="remove_path" :hidden="polyline == null">
+			Hide history
 		</button>
-		<button @click="draw_polyline" id="show_path"
+		<button @click="draw_device_history" id="show_path"
 				:hidden="polyline != null || datetimeFrom == null || datetimeTo == null">
-			Show path
+			Show history
+		</button>
+		<button @click="change_mode" id="change_mode"
+				:hidden="datetimeFrom == null">
+			{{ this.pathMode ? "Single trace" : "Trace path" }}
 		</button>
 		<span :hidden="this.totalDistance === 0">
 			Total distance: {{ totalDistanceString }}
@@ -30,11 +34,9 @@
 		<div id="time-range">
 			<div id="slider-caption">
 				<div id="slider-from"></div>
-				<div id="slider-to"></div>
+				<div v-if="pathMode" id="slider-to"></div>
 			</div>
-			<div class="sliders_step1">
-				<div id="slider-range"></div>
-			</div>
+			<div id="slider"></div>
 		</div>
 	</div>
 </template>
@@ -44,8 +46,8 @@ import VueElementLoading from 'vue-element-loading'
 import {mapGetters, mapMutations} from "vuex";
 import axios from "axios";
 import {env} from "../../config/env";
-import {calcCrow, getMarker} from "../function";
-import {DeviceTimestamp, Localization} from "../data-class";
+import {calcCrow, getMarkerPopUp, getSliderDiv} from "../function";
+import {DeviceTimestamp, Localization, MarkerTimestamp} from "../data-class";
 import $ from "jquery";
 import 'jquery-ui-bundle';
 import 'jquery-ui-bundle/jquery-ui.min.css';
@@ -75,14 +77,18 @@ export default {
 			deviceId: null,
 			devices: [],
 			deviceTimestamps: [],
+			markersFromHistory: [],
 			history: null,
 			datetimeFrom: null,
 			marker_from: null,
 			datetimeTo: null,
 			marker_to: null,
+			chosenDeviceMarker: null,
 			polyline: null,
 			totalDistance: 0,
-			isLoading: false
+			isLoading: false,
+			pathMode: false,
+			sliderDiv: getSliderDiv()
         }
     },
 	watch: {
@@ -95,9 +101,9 @@ export default {
 					axios.get(env.API_URL + '/get_localization?device_id=' + new_device_id).then(response => {
 						let localization = JSON.parse(response.data)
 						let latLng = [localization.lat, localization.lon]
-						let marker = L.marker(latLng).addTo(this.map);
-						marker.bindPopup(
-							getMarker(
+						this.chosenDeviceMarker = L.marker(latLng).addTo(this.map);
+						this.chosenDeviceMarker.bindPopup(
+							getMarkerPopUp(
 								"Chosen device",
 								new_device_id,
 								localization.timestamp_str,
@@ -111,13 +117,20 @@ export default {
 		datetimeFrom: {
 			deep: true,
 			handler(new_value, old_value) {
-				this.draw_polyline()
+				this.draw_device_history()
 			}
 		},
 		datetimeTo: {
 			deep: true,
 			handler(new_value, old_value) {
-				this.draw_polyline()
+				this.draw_device_history()
+			}
+		},
+		pathMode: {
+			deep: true,
+			handler(new_value, old_value) {
+				this.reload_slider()
+				this.draw_device_history()
 			}
 		}
 	},
@@ -134,12 +147,52 @@ export default {
 		})
 	},
 	methods: {
-		draw_polyline() {
-			if (this.datetimeFrom == null || this.datetimeTo == null) {
+		change_mode() {
+			this.pathMode = this.pathMode === false
+		},
+		draw_device_history() {
+			this.clear_path_elements()
+
+			if (this.pathMode) {
+				this.draw_polyline();
+			} else {
+				this.draw_marker_in_timestamp();
+			}
+		},
+		draw_marker_in_timestamp() {
+			if (this.datetimeFrom == null) {
 				return
 			}
 
 			this.clear_path_elements()
+			this.load_markers_from_history()
+			this.totalDistance = 0
+
+			for (let markerTimestamp of this.markersFromHistory) {
+				if (markerTimestamp.timestamp >= this.datetimeFrom) {
+					this.marker_from = markerTimestamp.marker;
+					this.marker_from.bindPopup(
+						getMarkerPopUp(
+							"Chosen timestamp",
+							this.chosenDeviceId,
+							this.datetimeFrom.toLocaleString("pl"),
+							dateFormat(this.datetimeFrom, "yyyy-mm-dd-HH-MM-ss")
+						));
+					this.marker_from.addTo(this.map)
+					break;
+				}
+			}
+
+			let markers = Array.from(this.markersFromHistory,(markerFromHistory)=> markerFromHistory.marker);
+			markers.push(this.chosenDeviceMarker)
+			let group = new L.featureGroup(markers);
+			this.map.fitBounds(group.getBounds(), {padding: [50, 50]});
+		},
+		load_markers_from_history(reload = false) {
+			if (this.markersFromHistory.length && reload === false) {
+				return
+			}
+
 			let redIcon = L.icon({
 				iconUrl: '/static/img/marker-icon-red.png',
 				shadowUrl: '/static/img/marker-shadow.png',
@@ -147,52 +200,83 @@ export default {
         		popupAnchor:  [0, -36]  // popup position
 			})
 
-			let points = []
+			this.markersFromHistory = []
 			this.totalDistance = 0
 
 			for (let [key, value] of this.history) {
 				if (key >= this.datetimeFrom && key <= this.datetimeTo) {
-					if (points.length === 0) {
-						points.push(
-							new L.LatLng(value.lat, value.lon)
+					if (this.markersFromHistory.length === 0) {
+						this.markersFromHistory.push(
+							new MarkerTimestamp(
+								key,
+								L.marker(new L.LatLng(value.lat, value.lon), {icon: redIcon})
+							)
 						)
 					} else {
-						let previous_point = points[points.length - 1]
+						let previous_point =
+							this.markersFromHistory[this.markersFromHistory.length - 1].marker.getLatLng()
 						let distance = calcCrow(value.lat, value.lon, previous_point.lat, previous_point.lng)
 						this.totalDistance += distance
 
 						if (distance > 100) {
-							points.push(
-								new L.LatLng(value.lat, value.lon)
+							this.markersFromHistory.push(
+								new MarkerTimestamp(
+									key,
+									L.marker(new L.LatLng(value.lat, value.lon), {icon: redIcon})
+								)
 							)
 						}
 					}
 				}
 			}
+		},
+		draw_polyline() {
+			if (this.datetimeFrom == null || this.datetimeTo == null || this.pathMode === false) {
+				return
+			}
 
-			console.log(points)
+			this.load_markers_from_history()
+			let marker_from_found = false
+			let marker_to_found = false
+			let markersInRange = []
 
-			if (points.length > 1) {
-				this.marker_from = L.marker(points[0], {icon: redIcon});
-				this.marker_from.bindPopup(
-					getMarker(
+			for (let markerTimestamp of this.markersFromHistory) {
+				if (this.datetimeTo >= markerTimestamp.timestamp && markerTimestamp.timestamp >= this.datetimeFrom) {
+					markersInRange.push(markerTimestamp.marker)
+				}
+
+				if (marker_from_found === false && markerTimestamp.timestamp >= this.datetimeFrom) {
+					this.marker_from = markerTimestamp.marker
+					this.marker_from.bindPopup(
+					getMarkerPopUp(
 						"Start point",
 						this.chosenDeviceId,
 						this.datetimeFrom.toLocaleString("pl"),
 						dateFormat(this.datetimeFrom, "yyyy-mm-dd-HH-MM-ss")
 					));
-				this.marker_from.addTo(this.map)
-				this.marker_to = L.marker(points[points.length - 1], {icon: redIcon});
-				this.marker_to.bindPopup(
-					getMarker(
+					this.marker_from.addTo(this.map)
+					marker_from_found = true
+				}
+
+				if (marker_to_found === false && markerTimestamp.timestamp >= this.datetimeTo) {
+					this.marker_to = markerTimestamp.marker
+					this.marker_to.bindPopup(
+					getMarkerPopUp(
 						"End point",
 						this.chosenDeviceId,
 						this.datetimeTo.toLocaleString("pl"),
 						dateFormat(this.datetimeTo, "yyyy-mm-dd-HH-MM-ss")
 					));
-				this.marker_to.addTo(this.map)
+					this.marker_to.addTo(this.map)
+					marker_to_found = true
+				}
+
+				if (marker_from_found && marker_to_found) {
+					break
+				}
 			}
 
+			let points = Array.from(markersInRange,(marker) => marker.getLatLng());
 			this.polyline = new L.Polyline(points, {
 				color: 'red',
 				weight: 3,
@@ -200,6 +284,9 @@ export default {
 				smoothFactor: 1
 			});
 			this.polyline.addTo(this.map);
+			markersInRange.push(this.chosenDeviceMarker)
+			let group = new L.featureGroup(markersInRange);
+			this.map.fitBounds(group.getBounds(), {padding: [50, 50]});
 		},
 		clear_path_elements() {
 			if (this.polyline != null) {
@@ -214,60 +301,108 @@ export default {
 				this.marker_to.remove()
 			}
 		},
-		remove_path() {
+		remove_history() {
 			this.clear_path_elements()
 			this.polyline = null
 		},
 		show_details() {
 			console.log("Menu.vue show_details()")
-			this.$refs.deviceDetails.timestamp = new Date(Date.now());
+			if (this.pathMode === false && this.datetimeFrom) {
+				this.$refs.deviceDetails.timestamp = this.datetimeFrom;
+			} else {
+				this.$refs.deviceDetails.timestamp = new Date(Date.now());
+			}
+
 			this.$refs.deviceDetails.show();
 		},
-		pick_timestamp() {
+		load_history(reload = false) {
 			this.isLoading = true;
 
-			axios.get(env.API_URL + '/get_localizations?device_id=' + this.chosenDeviceId).then(response => {
-				let localizations = JSON.parse(response.data.replaceAll('\'', ''))
-				this.history = new Map()
-
-				for (let index = 0; index < localizations.length; index++) {
-					let element = localizations[index]
-					this.history.set(
-						Date.parse(element.timestamp_str),
-						new Localization(
-							element.lat,
-							element.lon,
-							element.timestamp_str
-						)
-					)
+			return new Promise(resolve => {
+				if (reload === false && this.history) {
+					resolve(true)
 				}
 
+				setTimeout(() => {
+					axios.get(env.API_URL + '/get_localizations?device_id=' + this.chosenDeviceId).then(response => {
+						let localizations = JSON.parse(response.data.replaceAll('\'', ''))
+						let dt_from = localizations[0].timestamp_str
+						let dt_to = localizations[localizations.length - 1].timestamp_str
+						this.datetimeFrom = Date.parse(dt_from)
+						this.datetimeTo = Date.parse(dt_to)
+						this.history = new Map()
+
+						for (let index = 0; index < localizations.length; index++) {
+							let element = localizations[index]
+							this.history.set(
+								Date.parse(element.timestamp_str),
+								new Localization(
+									element.lat,
+									element.lon,
+									element.timestamp_str
+								)
+							)
+						}
+						resolve(true)
+					})
+				}, 1000);
+				setTimeout(() => resolve(false), 15000);
+			});
+		},
+		async pick_timestamp() {
+			let loading_succeed = await this.load_history();
+
+			if (loading_succeed === false) {
 				this.isLoading = false;
-				var dt_from = localizations[0].timestamp_str
-				var dt_to = localizations[localizations.length - 1].timestamp_str
+				//TODO Print info about failed loading
+				return
+			}
 
-				$('#slider-from').html(dt_from);
-				$('#slider-to').html(dt_to);
-				this.datetimeFrom = Date.parse(dt_from)
-				this.datetimeTo = Date.parse(dt_to)
-				var min_val = this.datetimeFrom/1000;
-				var max_val = this.datetimeTo/1000;
-				var mapComponent = this
+			console.log("loading succeed: " + loading_succeed)
+			this.reload_slider()
+			this.isLoading = false;
+		},
+		reload_slider() {
+			this.datetimeFrom = new Date(this.markersFromHistory[0].timestamp)
+			this.datetimeTo = new Date(this.markersFromHistory[this.markersFromHistory.length - 1].timestamp)
+			$('#slider-from').html(this.datetimeFrom.toLocaleString("pl"));
+			$('#slider-to').html(this.datetimeTo.toLocaleString("pl"));
+			let from_val = this.datetimeFrom / 1000;
+			let to_val = this.datetimeTo / 1000;
+			let mapComponent = this
+			$("#slider").remove()
+			$('<div>', {
+				id: 'slider'
+			}).appendTo('#time-range');
 
-				$("#slider-range").slider({
+			if (this.pathMode) {
+				$("#slider").slider({
 					range: true,
-					min: min_val,
-					max: max_val,
+					min: from_val,
+					max: to_val,
 					step: 10,
-					values: [min_val, max_val],
+					values: [from_val, to_val],
 					slide: function (e, ui) {
-						mapComponent.datetimeFrom = new Date(ui.values[0]*1000);
+						mapComponent.datetimeFrom = new Date(ui.values[0] * 1000);
 						$('#slider-from').html(mapComponent.datetimeFrom.toLocaleString("pl"));
-						mapComponent.datetimeTo = new Date(ui.values[1]*1000);
+						mapComponent.datetimeTo = new Date(ui.values[1] * 1000);
 						$('#slider-to').html(mapComponent.datetimeTo.toLocaleString("pl"));
 					}
 				});
-			})
+			} else {
+				$("#slider").slider({
+					range: false,
+					min: from_val,
+					max: to_val,
+					step: 10,
+					value: from_val,
+					slide: function (e, ui) {
+						mapComponent.datetimeFrom = new Date(ui.value * 1000);
+						$('#slider-from').html(mapComponent.datetimeFrom.toLocaleString("pl"));
+						$('#slider-to').html("");
+					}
+				});
+			}
 		},
 		...mapMutations([
 			'setChosenDeviceId'
@@ -280,13 +415,14 @@ export default {
 
 #menu
 {
-	min-height: 80px;
+	min-height: 60px;
+	height: auto;
     width: 96vw;
     position: relative;
     z-index: 9999;
     left: 2vw;
     bottom: 99vh;
-    background-color: rgba(230, 230, 230, 0.9);
+    background-color: rgba(230, 230, 230, 0.95);
     color: #333333;
 }
 

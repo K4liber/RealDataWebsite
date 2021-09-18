@@ -1,6 +1,6 @@
 import {env} from "../config/env";
 
-export function getMarker(title, device_id, timestamp, view_timestamp) {
+export function getMarkerPopUp(title, device_id, timestamp, view_timestamp) {
 	let imgSrc = env.API_URL + '/view?device_id=' + device_id +
 		(view_timestamp ? ('&timestamp=' + view_timestamp) : '');
 	return "<div style='margin: 0 auto;text-align: center;'>" +
@@ -29,4 +29,8 @@ export function calcCrow(lat1, lon1, lat2, lon2) {
 
 function toRad(degrees) {
 	return degrees * Math.PI / 180;
+}
+
+export function getSliderDiv() {
+	return '<div id="slider"></div>'
 }

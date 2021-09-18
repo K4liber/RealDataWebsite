@@ -6,7 +6,7 @@
 import "leaflet/dist/leaflet.css";
 import {Icon, map, tileLayer} from "leaflet";
 import {mapGetters, mapMutations} from "vuex";
-import {getMarker} from "../function";
+import {getMarkerPopUp} from "../function";
 
 delete Icon.Default.prototype._getIconUrl;
 Icon.Default.mergeOptions({
@@ -58,7 +58,7 @@ export default {
 			})
 			let marker = L.marker(latLng, {icon: greenIcon}).addTo(map);
 			let today  = new Date();
-			marker.bindPopup(getMarker("Your device", null, today.toLocaleString("pl")));
+			marker.bindPopup(getMarkerPopUp("Your device", null, today.toLocaleString("pl")));
 		},
 		...mapMutations([
 			'setMap'

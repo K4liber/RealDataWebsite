@@ -3,7 +3,7 @@
 		:height="'auto'"
 	>
 		<div style='margin: 0 auto;text-align: center;'>
-			<img style='max-height:80vh;max-width:80vw;' :src='this.img_src'/>
+			<img alt='' style='max-height:80vh;max-width:80vw;' :src='this.img_src'/>
 			<div>Device ID: {{this.chosenDeviceId}}</div>
 			<div>{{this.timestamp ? ("Timestamp: " + this.timestamp.toLocaleString("pl")) : ''}}</div>
 		</div>

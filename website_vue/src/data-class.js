@@ -12,3 +12,10 @@ export class DeviceTimestamp {
 	this.timestampStr = timestampStr;
   }
 }
+
+export class MarkerTimestamp {
+	constructor(timestamp, marker) {
+		this.timestamp = timestamp;
+		this.marker = marker;
+	}
+}
