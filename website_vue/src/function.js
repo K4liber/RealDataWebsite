@@ -13,7 +13,7 @@ export function getMarkerPopUp(title, device_id, timestamp, view_timestamp) {
 		"</div>"
 }
 
-export function calcCrow(lat1, lon1, lat2, lon2) {
+export function calculateDistance(lat1, lon1, lat2, lon2) {
 	let R = 6371000; // [m]
 	let dLat = toRad(lat2-lat1);
 	let dLon = toRad(lon2-lon1);
@@ -33,4 +33,26 @@ function toRad(degrees) {
 
 export function getSliderDiv() {
 	return '<div id="slider"></div>'
+}
+
+export function getCircleIcon(color) {
+	return L.icon({
+		iconUrl: '/static/img/marker-' + color + '.png',
+		iconAnchor:   [12, 12],  // marker icon position
+		popupAnchor:  [0, -12]  // popup position
+	})
+}
+
+export function getMarkerIcon(color) {
+	return L.icon({
+		iconUrl: '/static/img/marker-icon-' + color + '.png',
+		shadowUrl: '/static/img/marker-shadow.png',
+		iconAnchor:   [13, 40],  // marker icon position
+		popupAnchor:  [0, -36]  // popup position
+	})
+}
+
+export function setZIndex(leafletMap, marker, zIndex) {
+	let position = leafletMap.latLngToLayerPoint(marker.getLatLng()).round();
+    marker.setZIndexOffset(zIndex - position.y);
 }

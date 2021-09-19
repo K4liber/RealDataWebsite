@@ -6,7 +6,7 @@
 import "leaflet/dist/leaflet.css";
 import {Icon, map, tileLayer} from "leaflet";
 import {mapGetters, mapMutations} from "vuex";
-import {getMarkerPopUp} from "../function";
+import {getMarkerIcon, getMarkerPopUp} from "../function";
 
 delete Icon.Default.prototype._getIconUrl;
 Icon.Default.mergeOptions({
@@ -33,10 +33,26 @@ export default {
 		).addTo(this.map);
 		this.directToClientLocalization();
 	},
+	data () {
+        return {
+			userMarker: null,
+		}
+	},
 	computed: {
 		...mapGetters([
-			'map'
+			'map',
+			'chosenDeviceId'
 		])
+	},
+	watch: {
+		chosenDeviceId: {
+			deep: true,
+			handler(newChosenDeviceID, oldChosenDeviceID) {
+				if (newChosenDeviceID !== null) {
+					this.userMarker.remove()
+				}
+			}
+		}
 	},
 	methods: {
 		directToClientLocalization() {
@@ -50,15 +66,11 @@ export default {
 			});
 		},
 		addBasicMarker(map, latLng) {
-			let greenIcon = L.icon({
-				iconUrl: '/static/img/marker-icon-green.png',
-				shadowUrl: '/static/img/marker-shadow.png',
-				iconAnchor:   [13, 40],  // marker icon position
-        		popupAnchor:  [0, -36]  // popup position
-			})
-			let marker = L.marker(latLng, {icon: greenIcon}).addTo(map);
+			this.userMarker = L.marker(latLng)
+			this.userMarker.addTo(map);
 			let today  = new Date();
-			marker.bindPopup(getMarkerPopUp("Your device", null, today.toLocaleString("pl")));
+			this.userMarker.bindPopup(
+				getMarkerPopUp("Your device", null, today.toLocaleString("pl")));
 		},
 		...mapMutations([
 			'setMap'

@@ -14,7 +14,7 @@
 		<button @click="show_details" id="show_details" :hidden="deviceId == null">
 			Show details
 		</button>
-		<button @click="pick_timestamp" id="pick_timestamp" :hidden="deviceId == null">
+		<button @click="get_history" id="get_history" :hidden="deviceId == null">
 			{{ this.history ? "Reload history" : "Load history" }}
 		</button>
 		<button @click="remove_history" id="remove_path" :hidden="polyline == null">
@@ -28,9 +28,6 @@
 				:hidden="datetimeFrom == null">
 			{{ this.pathMode ? "Single trace" : "Trace path" }}
 		</button>
-		<span :hidden="this.totalDistance === 0">
-			Total distance: {{ totalDistanceString }}
-		</span>
 		<div id="time-range">
 			<div id="slider-caption">
 				<div id="slider-from"></div>
@@ -46,7 +43,7 @@ import VueElementLoading from 'vue-element-loading'
 import {mapGetters, mapMutations} from "vuex";
 import axios from "axios";
 import {env} from "../../config/env";
-import {calcCrow, getMarkerPopUp, getSliderDiv} from "../function";
+import {calculateDistance, getCircleIcon, getMarkerIcon, getMarkerPopUp, getSliderDiv, setZIndex} from "../function";
 import {DeviceTimestamp, Localization, MarkerTimestamp} from "../data-class";
 import $ from "jquery";
 import 'jquery-ui-bundle';
@@ -77,7 +74,7 @@ export default {
 			deviceId: null,
 			devices: [],
 			deviceTimestamps: [],
-			markersFromHistory: [],
+			sortedMarkersFromHistory: [],
 			history: null,
 			datetimeFrom: null,
 			marker_from: null,
@@ -87,7 +84,7 @@ export default {
 			polyline: null,
 			totalDistance: 0,
 			isLoading: false,
-			pathMode: false,
+			pathMode: true,
 			sliderDiv: getSliderDiv()
         }
     },
@@ -95,13 +92,17 @@ export default {
 		deviceId: {
 			deep: true,
 			handler(new_device_id, old_device_id) {
+				this.clear_history_data()
+
 				if (new_device_id === "") {
 					this.setChosenDeviceId(null)
 				} else {
 					axios.get(env.API_URL + '/get_localization?device_id=' + new_device_id).then(response => {
 						let localization = JSON.parse(response.data)
 						let latLng = [localization.lat, localization.lon]
-						this.chosenDeviceMarker = L.marker(latLng).addTo(this.map);
+						let greenIcon = getMarkerIcon("green")
+						this.chosenDeviceMarker = L.marker(latLng, {icon: greenIcon}).addTo(this.map);
+						setZIndex(this.map, this.chosenDeviceMarker, 102)
 						this.chosenDeviceMarker.bindPopup(
 							getMarkerPopUp(
 								"Chosen device",
@@ -147,10 +148,36 @@ export default {
 		})
 	},
 	methods: {
+		clear_history_data() {
+			if (this.chosenDeviceMarker) {
+				this.chosenDeviceMarker.remove()
+			}
+
+			if (this.marker_from) {
+				this.marker_from.remove()
+			}
+
+			if (this.marker_to) {
+				this.marker_to.remove()
+			}
+
+			this.clear_path_elements()
+			this.history = null
+			this.datetimeFrom = null
+			this.marker_from = null
+			this.datetimeTo = null
+			this.marker_to = null
+			this.chosenDeviceMarker = null
+			this.polyline = null
+		},
 		change_mode() {
 			this.pathMode = this.pathMode === false
 		},
 		draw_device_history() {
+			if (this.chosenDeviceMarker) {
+				this.chosenDeviceMarker.remove()
+			}
+
 			this.clear_path_elements()
 
 			if (this.pathMode) {
@@ -168,7 +195,7 @@ export default {
 			this.load_markers_from_history()
 			this.totalDistance = 0
 
-			for (let markerTimestamp of this.markersFromHistory) {
+			for (let markerTimestamp of this.sortedMarkersFromHistory) {
 				if (markerTimestamp.timestamp >= this.datetimeFrom) {
 					this.marker_from = markerTimestamp.marker;
 					this.marker_from.bindPopup(
@@ -183,30 +210,24 @@ export default {
 				}
 			}
 
-			let markers = Array.from(this.markersFromHistory,(markerFromHistory)=> markerFromHistory.marker);
+			let markers = Array.from(this.sortedMarkersFromHistory,(markerFromHistory)=> markerFromHistory.marker);
 			markers.push(this.chosenDeviceMarker)
 			let group = new L.featureGroup(markers);
 			this.map.fitBounds(group.getBounds(), {padding: [50, 50]});
 		},
 		load_markers_from_history(reload = false) {
-			if (this.markersFromHistory.length && reload === false) {
+			if (this.sortedMarkersFromHistory.length && reload === false) {
 				return
 			}
 
-			let redIcon = L.icon({
-				iconUrl: '/static/img/marker-icon-red.png',
-				shadowUrl: '/static/img/marker-shadow.png',
-				iconAnchor:   [13, 40],  // marker icon position
-        		popupAnchor:  [0, -36]  // popup position
-			})
-
-			this.markersFromHistory = []
+			let redIcon = getCircleIcon("red")
+			this.sortedMarkersFromHistory = []
 			this.totalDistance = 0
 
-			for (let [key, value] of this.history) {
+			for (let [key, value] of new Map([...this.history.entries()].sort())) {
 				if (key >= this.datetimeFrom && key <= this.datetimeTo) {
-					if (this.markersFromHistory.length === 0) {
-						this.markersFromHistory.push(
+					if (this.sortedMarkersFromHistory.length === 0) {
+						this.sortedMarkersFromHistory.push(
 							new MarkerTimestamp(
 								key,
 								L.marker(new L.LatLng(value.lat, value.lon), {icon: redIcon})
@@ -214,12 +235,12 @@ export default {
 						)
 					} else {
 						let previous_point =
-							this.markersFromHistory[this.markersFromHistory.length - 1].marker.getLatLng()
-						let distance = calcCrow(value.lat, value.lon, previous_point.lat, previous_point.lng)
+							this.sortedMarkersFromHistory[this.sortedMarkersFromHistory.length - 1].marker.getLatLng()
+						let distance = calculateDistance(value.lat, value.lon, previous_point.lat, previous_point.lng)
 						this.totalDistance += distance
 
 						if (distance > 100) {
-							this.markersFromHistory.push(
+							this.sortedMarkersFromHistory.push(
 								new MarkerTimestamp(
 									key,
 									L.marker(new L.LatLng(value.lat, value.lon), {icon: redIcon})
@@ -228,6 +249,13 @@ export default {
 						}
 					}
 				}
+				// Push one additional marker in the end
+				this.sortedMarkersFromHistory.push(
+					new MarkerTimestamp(
+						key,
+						L.marker(new L.LatLng(value.lat, value.lon), {icon: redIcon})
+					)
+				)
 			}
 		},
 		draw_polyline() {
@@ -239,10 +267,18 @@ export default {
 			let marker_from_found = false
 			let marker_to_found = false
 			let markersInRange = []
+			this.totalDistance = 0
 
-			for (let markerTimestamp of this.markersFromHistory) {
+			for (const [index, markerTimestamp] of this.sortedMarkersFromHistory.entries()) {
 				if (this.datetimeTo >= markerTimestamp.timestamp && markerTimestamp.timestamp >= this.datetimeFrom) {
 					markersInRange.push(markerTimestamp.marker)
+
+					if (index > 1) {
+						let current = markerTimestamp.marker.getLatLng()
+						let previous = this.sortedMarkersFromHistory[index - 1].marker.getLatLng()
+						let distance = calculateDistance(current.lat, current.lng, previous.lat, previous.lng)
+						this.totalDistance += distance
+					}
 				}
 
 				if (marker_from_found === false && markerTimestamp.timestamp >= this.datetimeFrom) {
@@ -260,6 +296,7 @@ export default {
 
 				if (marker_to_found === false && markerTimestamp.timestamp >= this.datetimeTo) {
 					this.marker_to = markerTimestamp.marker
+					this.marker_to.setIcon(getCircleIcon("green"))
 					this.marker_to.bindPopup(
 					getMarkerPopUp(
 						"End point",
@@ -275,7 +312,6 @@ export default {
 					break
 				}
 			}
-
 			let points = Array.from(markersInRange,(marker) => marker.getLatLng());
 			this.polyline = new L.Polyline(points, {
 				color: 'red',
@@ -283,6 +319,9 @@ export default {
 				opacity: 0.5,
 				smoothFactor: 1
 			});
+			this.polyline.bindPopup(
+				this.totalDistanceString
+			);
 			this.polyline.addTo(this.map);
 			markersInRange.push(this.chosenDeviceMarker)
 			let group = new L.featureGroup(markersInRange);
@@ -343,28 +382,30 @@ export default {
 								)
 							)
 						}
+
 						resolve(true)
 					})
-				}, 1000);
-				setTimeout(() => resolve(false), 15000);
+				}, 10);
+				setTimeout(() => resolve(false), 30000);
 			});
 		},
-		async pick_timestamp() {
+		async get_history() {
 			let loading_succeed = await this.load_history();
 
 			if (loading_succeed === false) {
 				this.isLoading = false;
-				//TODO Print info about failed loading
+				alert('Loading device history failed')
 				return
 			}
 
-			console.log("loading succeed: " + loading_succeed)
+			this.load_markers_from_history()
 			this.reload_slider()
 			this.isLoading = false;
 		},
 		reload_slider() {
-			this.datetimeFrom = new Date(this.markersFromHistory[0].timestamp)
-			this.datetimeTo = new Date(this.markersFromHistory[this.markersFromHistory.length - 1].timestamp)
+			console.log('reload_slider')
+			this.datetimeFrom = new Date(this.sortedMarkersFromHistory[0].timestamp)
+			this.datetimeTo = new Date(this.sortedMarkersFromHistory[this.sortedMarkersFromHistory.length - 1].timestamp)
 			$('#slider-from').html(this.datetimeFrom.toLocaleString("pl"));
 			$('#slider-to').html(this.datetimeTo.toLocaleString("pl"));
 			let from_val = this.datetimeFrom / 1000;
