@@ -1,21 +1,21 @@
 export class Localization {
-  constructor(lat, lon, timestampStr) {
-    this.lat = lat;
-    this.lon = lon;
-	this.timestampStr = timestampStr;
+  constructor (lat, lon, timestampStr) {
+    this.lat = lat
+    this.lon = lon
+    this.timestampStr = timestampStr
   }
 }
 
 export class DeviceTimestamp {
-  constructor(device_id, timestampStr) {
-    this.device_id = device_id;
-	this.timestampStr = timestampStr;
+  constructor (deviceId, timestampStr) {
+    this.device_id = deviceId
+    this.timestampStr = timestampStr
   }
 }
 
 export class MarkerTimestamp {
-	constructor(timestamp, marker) {
-		this.timestamp = timestamp;
-		this.marker = marker;
-	}
+  constructor (timestamp, marker) {
+    this.timestamp = timestamp
+    this.marker = marker
+  }
 }
