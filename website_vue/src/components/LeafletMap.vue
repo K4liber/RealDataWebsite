@@ -48,7 +48,7 @@ export default {
     chosenDeviceId: {
       deep: true,
       handler (newChosenDeviceID, oldChosenDeviceID) {
-        if (newChosenDeviceID !== null) {
+        if (newChosenDeviceID !== null && this.userMarker != null) {
           this.userMarker.remove()
         }
       }

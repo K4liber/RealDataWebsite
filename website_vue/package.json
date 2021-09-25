@@ -10,13 +10,14 @@
     "unit": "jest --config test/unit/jest.conf.js --coverage",
     "e2e": "node test/e2e/runner.js",
     "test": "npm run unit && npm run e2e",
-	"lint-fix": "eslint --fix --ext .js,.vue src",
+    "lint-fix": "eslint --fix --ext .js,.vue src",
     "lint": "eslint --ext .js,.vue src test/unit test/e2e/specs",
-    "build": "node build/build.js"
+5    "build": "node build/build.js"
   },
   "dependencies": {
     "axios": "^0.21.1",
     "fs": "0.0.1-security",
+    "http-server": "^13.0.2",
     "jquery-ui-bundle": "^1.12.1-migrate",
     "leaflet": "^1.7.1",
     "vue": "^2.5.2",

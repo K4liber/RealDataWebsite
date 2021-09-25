@@ -52,9 +52,9 @@ export default {
 .modal-override {
   background-color: rgba(200, 200, 200, 0.95) !important;
   max-width: 84% !important;
-  max-height: 80%;
-  text-align: center;
-  position: absolute;
+  max-height: 80% !important;
+  text-align: center !important;
+  position: absolute !important;
 }
 
 @media all and (orientation: portrait) {
