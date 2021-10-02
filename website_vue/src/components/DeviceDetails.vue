@@ -3,6 +3,7 @@
          classes="modal-override"
          :height="'auto'"
          :addaptive="true"
+         @before-close="closeModal"
   >
     <div class="main">
       <img alt='' class="view-img" :src='this.img_src'/>
@@ -15,7 +16,7 @@
 <script>
 import Vue from 'vue'
 import vmodal from 'vue-js-modal'
-import {mapGetters} from 'vuex'
+import {mapGetters, mapMutations} from 'vuex'
 import {env} from '../../config/env'
 import dateFormat from 'dateformat'
 
@@ -31,16 +32,25 @@ export default {
   methods: {
     show () {
       this.$modal.show('device-details')
-    }
+    },
+    hide () {
+      this.$modal.hide('device-details')
+    },
+    closeModal () {
+      this.setChosenOption('device')
+    },
+    ...mapMutations([
+      'setChosenOption'
+    ])
   },
   computed: {
-    ...mapGetters([
-      'chosenDeviceId'
-    ]),
-    img_src () {
+    img_src: function () {
       return env.API_URL + '/view?device_id=' + this.chosenDeviceId +
         (this.timestamp ? ('&timestamp=' + dateFormat(this.timestamp, 'yyyy-mm-dd-HH-MM-ss')) : '')
-    }
+    },
+    ...mapGetters([
+      'chosenDeviceId'
+    ])
   },
   mount () {
     this.show()

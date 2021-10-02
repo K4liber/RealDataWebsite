@@ -10,7 +10,8 @@ export default new Vuex.Store({
     map: null,
     chosenDeviceId: null,
     defaultDaysRange: 2,
-    historyDaysBack: 2
+    historyDaysBack: 2,
+    chosenOption: 'device'
   },
   mutations: {
     setMap (state, map) {
@@ -24,6 +25,10 @@ export default new Vuex.Store({
     setHistoryDaysBack (state, daysBack) {
       if (state.debug) console.log('setHistoryDaysBack triggered')
       state.historyDaysBack = Math.max(state.defaultDaysRange, daysBack)
+    },
+    setChosenOption (state, chosenOption) {
+      if (state.debug) console.log('setChosenOption triggered')
+      state.chosenOption = chosenOption
     }
   },
   getters: {
@@ -57,6 +62,10 @@ export default new Vuex.Store({
         dateFormat(fromDateTime, 'yyyy-mm-dd-HH-MM-ss'),
         dateFormat(toDateTime, 'yyyy-mm-dd-HH-MM-ss')
       )
+    },
+    chosenOption: state => {
+      if (state.debug) console.log('getters chosenOption triggered')
+      return state.chosenOption
     }
   }
 })

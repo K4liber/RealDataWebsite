@@ -1,6 +1,5 @@
 <template>
   <div id="menu">
-    <device-details ref="deviceDetails"/>
     <vue-element-loading :active="isLoading" :is-full-screen="false"
                          background-color="rgba(255, 255, 255, .7)" text="Waiting for API response"/>
     DEVICE ID:
@@ -20,9 +19,6 @@
       :max-datetime="maxDeviceTimestamp"
       :hidden="deviceId == null">
     </datetime>
-    <button @click="show_details" id="show_details" :hidden="deviceId == null">
-      Show details
-    </button>
     <button @click="get_history" id="get_history" :hidden="deviceId == null || this.history">
       Load history
     </button>
@@ -62,7 +58,6 @@ import { Datetime } from 'vue-datetime'
 import $ from 'jquery'
 import 'jquery-ui-bundle'
 import 'jquery-ui-bundle/jquery-ui.min.css'
-import DeviceDetails from './DeviceDetails'
 import dateFormat from 'dateformat'
 import L from 'leaflet'
 
@@ -70,7 +65,6 @@ export default {
   name: 'Menu',
   components: {
     VueElementLoading,
-    DeviceDetails,
     datetime: Datetime
   },
   computed: {
@@ -393,16 +387,6 @@ export default {
       this.clear_path_elements()
       this.polyline = null
     },
-    show_details () {
-      console.log('Menu.vue show_details()')
-      if (this.pathMode === false && this.datetimeFrom) {
-        this.$refs.deviceDetails.timestamp = this.datetimeFrom
-      } else {
-        this.$refs.deviceDetails.timestamp = new Date(Date.now())
-      }
-
-      this.$refs.deviceDetails.show()
-    },
     load_history (reload = false) {
       this.isLoading = true
 
@@ -524,14 +508,13 @@ export default {
 <style scoped>
 
 #menu {
-  min-height: 60px;
-  height: auto;
+  height: 50px;
   width: 96vw;
   position: relative;
   z-index: 9999;
-  left: 2vw;
-  bottom: 99vh;
-  background-color: rgba(230, 230, 230, 0.95);
+  left: 50px;
+  bottom: 100vh;
+  background-color: rgba(230, 230, 230, 1.0);
   color: #333333;
 }
 
