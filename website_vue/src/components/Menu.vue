@@ -6,16 +6,28 @@
     DEVICE ID:
     <input list="device_ids" name="device_id" id="device_id" v-model="deviceId">
     <datalist id="device_ids">
-      <option v-if="deviceTimestamps !== null" :key="deviceTimestamp.device_id"
-              v-for="deviceTimestamp in deviceTimestamps" :value="deviceTimestamp.device_id">
-        {{ deviceTimestamp.device_id }} ({{ deviceTimestamp.timestampStr }})
+      <option v-if="devicesTimestampsRange !== null" :key="deviceId"
+              v-for="[deviceId, deviceTimestampRange] in devicesTimestampsRange" :value="deviceTimestampRange.deviceId">
+        {{ deviceId }} ({{ deviceTimestampRange.timestampFrom }})
       </option>
     </datalist>
+    <span :hidden="deviceId == null">SINCE DATE:</span>
+    <datetime
+      style="display: inline-block;"
+      type="date"
+      v-model="historyStartDatetime"
+      :min-datetime="minDeviceTimestamp"
+      :max-datetime="maxDeviceTimestamp"
+      :hidden="deviceId == null">
+    </datetime>
     <button @click="show_details" id="show_details" :hidden="deviceId == null">
       Show details
     </button>
-    <button @click="get_history" id="get_history" :hidden="deviceId == null">
-      {{ this.history ? "Reload history" : "Load history" }}
+    <button @click="get_history" id="get_history" :hidden="deviceId == null || this.history">
+      Load history
+    </button>
+    <button @click="reload_history" id="reload_history" :hidden="deviceId == null || this.history == null || this.history.length == 0">
+      Reload history
     </button>
     <button @click="remove_history" id="remove_path" :hidden="polyline == null">
       Hide history
@@ -44,7 +56,9 @@ import {mapGetters, mapMutations} from 'vuex'
 import axios from 'axios'
 import {env} from '../../config/env'
 import {calculateDistance, getCircleIcon, getMarkerIcon, getMarkerPopUp, getSliderDiv, setZIndex} from '../function'
-import {DeviceTimestamp, Localization, MarkerTimestamp} from '../data-class'
+import {DeviceTimestampsRange, Localization, MarkerTimestamp} from '../data-class'
+import 'vue-datetime/dist/vue-datetime.css'
+import { Datetime } from 'vue-datetime'
 import $ from 'jquery'
 import 'jquery-ui-bundle'
 import 'jquery-ui-bundle/jquery-ui.min.css'
@@ -56,7 +70,8 @@ export default {
   name: 'Menu',
   components: {
     VueElementLoading,
-    DeviceDetails
+    DeviceDetails,
+    datetime: Datetime
   },
   computed: {
     totalDistanceString: function () {
@@ -65,17 +80,31 @@ export default {
         : (this.totalDistance / 1000).toPrecision(6)) +
         (this.totalDistance <= 1000 ? ' [m]' : ' [km]')
     },
+    getHistoryStartDatetime: function () {
+      let sinceDateTime = new Date()
+      console.log(this.historyDaysBack)
+      sinceDateTime.setDate(sinceDateTime.getDate() - this.historyDaysBack)
+      return sinceDateTime.toISOString()
+    },
     ...mapGetters([
       'map',
-      'chosenDeviceId'
+      'chosenDeviceId',
+      'dateTimeStringRange',
+      'historyDaysBack'
     ])
+  },
+  created () {
+    this.historyStartDatetime = this.getHistoryStartDatetime
   },
   data () {
     return {
+      historyStartDatetime: null,
       deviceId: null,
       devices: [],
-      deviceTimestamps: [],
+      devicesTimestampsRange: null,
       sortedMarkersFromHistory: [],
+      minDeviceTimestamp: null,
+      maxDeviceTimestamp: null,
       history: null,
       datetimeFrom: null,
       marker_from: null,
@@ -98,6 +127,9 @@ export default {
         if (newDeviceId === '') {
           this.setChosenDeviceId(null)
         } else {
+          let deviceTimestampsRange = this.devicesTimestampsRange.get(newDeviceId)
+          this.minDeviceTimestamp = new Date(deviceTimestampsRange.timestampFrom).toISOString()
+          this.maxDeviceTimestamp = new Date(deviceTimestampsRange.timestampTo).toISOString()
           axios.get(env.API_URL + '/get_localization?device_id=' + newDeviceId).then(response => {
             let localization = JSON.parse(response.data)
             let latLng = [localization.lat, localization.lon]
@@ -109,7 +141,8 @@ export default {
                 'Chosen device',
                 newDeviceId,
                 localization.timestamp_str
-              ))
+              )
+            )
             this.map.setView(latLng, 16)
             this.setChosenDeviceId(newDeviceId)
           })
@@ -134,16 +167,31 @@ export default {
         this.reload_slider()
         this.draw_device_history()
       }
+    },
+    historyStartDatetime: {
+      deep: true,
+      handler (newValue, oldValue) {
+        let dateTime = new Date(newValue)
+        const diffTime = Math.abs(new Date() - dateTime)
+        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24))
+        this.setHistoryDaysBack(diffDays)
+      }
     }
   },
   mounted: function () {
-    axios.get(env.API_URL + '/get_devices_timestamps').then(response => {
+    axios.get(env.API_URL + '/get_devices_timestamps_range').then(response => {
       let responseList = JSON.parse(response.data.replaceAll('\'', ''))
+      this.devicesTimestampsRange = new Map()
 
       for (let index = 0; index < responseList.length; index++) {
         let deviceTimestamp = responseList[index]
-        this.deviceTimestamps.push(
-          new DeviceTimestamp(deviceTimestamp.device_id, deviceTimestamp.timestamp_str)
+        this.devicesTimestampsRange.set(
+          deviceTimestamp.device_id,
+          new DeviceTimestampsRange(
+            deviceTimestamp.device_id,
+            deviceTimestamp.timestamp_from,
+            deviceTimestamp.timestamp_to
+          )
         )
       }
     })
@@ -361,16 +409,27 @@ export default {
       return new Promise(resolve => {
         if (reload === false && this.history) {
           resolve(true)
+          return
         }
 
         setTimeout(() => {
-          axios.get(env.API_URL + '/get_localizations?device_id=' + this.chosenDeviceId).then(response => {
+          let dateTimeRange = this.dateTimeStringRange
+          console.log(this.dateTimeStringRange)
+          let parameters = '?device_id=' + this.chosenDeviceId + '&from=' + dateTimeRange.fromString + '&to=' + dateTimeRange.toString
+
+          axios.get(env.API_URL + '/get_localizations' + parameters).then(response => {
             let localizations = JSON.parse(response.data.replaceAll('\'', ''))
+            this.history = new Map()
+
+            if (localizations === null || localizations.length === 0) {
+              resolve(true)
+              return
+            }
+
             let dtFrom = localizations[0].timestamp_str
             let dtTo = localizations[localizations.length - 1].timestamp_str
             this.datetimeFrom = Date.parse(dtFrom)
             this.datetimeTo = Date.parse(dtTo)
-            this.history = new Map()
 
             for (let index = 0; index < localizations.length; index++) {
               let element = localizations[index]
@@ -390,8 +449,11 @@ export default {
         setTimeout(() => resolve(false), 30000)
       })
     },
-    async get_history () {
-      let loadingSucceed = await this.load_history()
+    async reload_history () {
+      this.get_history(true)
+    },
+    async get_history (reload = false) {
+      let loadingSucceed = await this.load_history(reload)
 
       if (loadingSucceed === false) {
         this.isLoading = false
@@ -399,12 +461,17 @@ export default {
         return
       }
 
-      this.load_markers_from_history()
+      this.load_markers_from_history(reload)
       this.reload_slider()
       this.isLoading = false
     },
     reload_slider () {
       console.log('reload_slider')
+      if (this.sortedMarkersFromHistory === null || this.sortedMarkersFromHistory.length === 0) {
+        return
+      }
+      console.log('reload_slider 2')
+
       this.datetimeFrom = new Date(this.sortedMarkersFromHistory[0].timestamp)
       this.datetimeTo = new Date(this.sortedMarkersFromHistory[this.sortedMarkersFromHistory.length - 1].timestamp)
       $('#slider-from').html(this.datetimeFrom.toLocaleString('pl'))
@@ -447,7 +514,8 @@ export default {
       }
     },
     ...mapMutations([
-      'setChosenDeviceId'
+      'setChosenDeviceId',
+      'setHistoryDaysBack'
     ])
   }
 }
