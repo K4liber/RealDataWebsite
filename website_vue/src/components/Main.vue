@@ -2,14 +2,14 @@
   <div class="content">
     <LeftPanel/>
     <LeafletMap/>
-    <Menu/>
+    <Holder/>
     <device-details ref="deviceDetails"/>
   </div>
 </template>
 <script>
 
 import LeafletMap from './LeafletMap'
-import Menu from './Menu'
+import Holder from './top_panel/Holder'
 import LeftPanel from './LeftPanel'
 import DeviceDetails from './DeviceDetails'
 import {mapGetters} from 'vuex'
@@ -20,24 +20,12 @@ export default {
     LeftPanel,
     LeafletMap,
     DeviceDetails,
-    Menu
+    Holder
   },
   computed: {
     ...mapGetters([
       'chosenOption'
     ])
-  },
-  watch: {
-    chosenOption: {
-      deep: true,
-      handler (newValue) {
-        if (newValue === 'view') {
-          this.$refs.deviceDetails.show()
-        } else {
-          this.$refs.deviceDetails.hide()
-        }
-      }
-    }
   }
 }
 </script>

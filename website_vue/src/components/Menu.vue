@@ -2,46 +2,48 @@
   <div id="menu">
     <vue-element-loading :active="isLoading" :is-full-screen="false"
                          background-color="rgba(255, 255, 255, .7)" text="Waiting for API response"/>
-    DEVICE ID:
-    <input list="device_ids" name="device_id" id="device_id" v-model="deviceId">
-    <datalist id="device_ids">
-      <option v-if="devicesTimestampsRange !== null" :key="deviceId"
-              v-for="[deviceId, deviceTimestampRange] in devicesTimestampsRange" :value="deviceTimestampRange.deviceId">
-        {{ deviceId }} ({{ deviceTimestampRange.timestampFrom }})
-      </option>
-    </datalist>
-    <span :hidden="deviceId == null">SINCE DATE:</span>
-    <datetime
-      style="display: inline-block;"
-      type="date"
-      v-model="historyStartDatetime"
-      :min-datetime="minDeviceTimestamp"
-      :max-datetime="maxDeviceTimestamp"
-      :hidden="deviceId == null">
-    </datetime>
-    <button @click="get_history" id="get_history" :hidden="deviceId == null || this.history">
-      Load history
-    </button>
-    <button @click="reload_history" id="reload_history" :hidden="deviceId == null || this.history == null || this.history.length == 0">
-      Reload history
-    </button>
-    <button @click="remove_history" id="remove_path" :hidden="polyline == null">
-      Hide history
-    </button>
-    <button @click="draw_device_history" id="show_path"
-            :hidden="polyline != null || datetimeFrom == null || datetimeTo == null">
-      Show history
-    </button>
-    <button @click="change_mode" id="change_mode"
-            :hidden="datetimeFrom == null">
-      {{ this.pathMode ? "Single trace" : "Trace path" }}
-    </button>
-    <div id="time-range">
-      <div id="slider-caption">
-        <div id="slider-from"></div>
-        <div v-if="pathMode" id="slider-to"></div>
+    <select-device v-if="chosenOption === 'device'"/>
+    <div v-if="chosenOption !== 'device'">
+      <input list="device_ids" name="device_id" id="device_id" v-model="deviceId" placeholder="Select device ID">
+      <datalist id="device_ids">
+        <option v-if="devicesTimestampsRange !== null" :key="deviceId"
+                v-for="[deviceId, deviceTimestampRange] in devicesTimestampsRange" :value="deviceTimestampRange.deviceId">
+          {{ deviceId }} ({{ deviceTimestampRange.timestampFrom }})
+        </option>
+      </datalist>
+      <span :hidden="deviceId == null">SINCE DATE:</span>
+      <datetime
+        style="display: inline-block;"
+        type="date"
+        v-model="historyStartDatetime"
+        :min-datetime="minDeviceTimestamp"
+        :max-datetime="maxDeviceTimestamp"
+        :hidden="deviceId == null">
+      </datetime>
+      <button @click="get_history" id="get_history" :hidden="deviceId == null || this.history">
+        Load history
+      </button>
+      <button @click="reload_history" id="reload_history" :hidden="deviceId == null || this.history == null || this.history.length == 0">
+        Reload history
+      </button>
+      <button @click="remove_history" id="remove_path" :hidden="polyline == null">
+        Hide history
+      </button>
+      <button @click="draw_device_history" id="show_path"
+              :hidden="polyline != null || datetimeFrom == null || datetimeTo == null">
+        Show history
+      </button>
+      <button @click="change_mode" id="change_mode"
+              :hidden="datetimeFrom == null">
+        {{ this.pathMode ? "Single trace" : "Trace path" }}
+      </button>
+      <div id="time-range">
+        <div id="slider-caption">
+          <div id="slider-from"></div>
+          <div v-if="pathMode" id="slider-to"></div>
+        </div>
+        <div id="slider"></div>
       </div>
-      <div id="slider"></div>
     </div>
   </div>
 </template>
@@ -60,10 +62,12 @@ import 'jquery-ui-bundle'
 import 'jquery-ui-bundle/jquery-ui.min.css'
 import dateFormat from 'dateformat'
 import L from 'leaflet'
+import SelectDevice from './top_panel/SelectDevice.vue'
 
 export default {
   name: 'Menu',
   components: {
+    SelectDevice,
     VueElementLoading,
     datetime: Datetime
   },
@@ -81,6 +85,7 @@ export default {
       return sinceDateTime.toISOString()
     },
     ...mapGetters([
+      'chosenOption',
       'map',
       'chosenDeviceId',
       'dateTimeStringRange',

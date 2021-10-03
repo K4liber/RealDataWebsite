@@ -11,7 +11,12 @@ export default new Vuex.Store({
     chosenDeviceId: null,
     defaultDaysRange: 2,
     historyDaysBack: 2,
-    chosenOption: 'device'
+    chosenOption: 'device',
+    devicesTimestampsRange: [],
+    isLoading: false,
+    localizationHistory: [],
+    rangeFrom: null,
+    rangeTo: null
   },
   mutations: {
     setMap (state, map) {
@@ -29,6 +34,26 @@ export default new Vuex.Store({
     setChosenOption (state, chosenOption) {
       if (state.debug) console.log('setChosenOption triggered')
       state.chosenOption = chosenOption
+    },
+    setDevicesTimestampsRange (state, devicesTimestampsRange) {
+      if (state.debug) console.log('setDevicesTimestampsRange triggered')
+      state.devicesTimestampsRange = devicesTimestampsRange
+    },
+    setIsLoading (state, isLoading) {
+      if (state.debug) console.log('setIsLoading triggered')
+      state.isLoading = isLoading
+    },
+    setLocalizationHistory (state, localizationHistory) {
+      if (state.debug) console.log('setLocalizationHistory triggered')
+      state.localizationHistory = localizationHistory
+    },
+    setRangeFrom (state, rangeFrom) {
+      if (state.debug) console.log('setRangeFrom triggered')
+      state.rangeFrom = rangeFrom
+    },
+    setRangeTo (state, rangeTo) {
+      if (state.debug) console.log('setRangeTo triggered')
+      state.rangeTo = rangeTo
     }
   },
   getters: {
@@ -66,6 +91,26 @@ export default new Vuex.Store({
     chosenOption: state => {
       if (state.debug) console.log('getters chosenOption triggered')
       return state.chosenOption
+    },
+    devicesTimestampsRange: state => {
+      if (state.debug) console.log('getters devicesTimestampsRange triggered')
+      return state.devicesTimestampsRange
+    },
+    isLoading: state => {
+      if (state.debug) console.log('getters isLoading triggered')
+      return state.isLoading
+    },
+    localizationHistory: state => {
+      if (state.debug) console.log('getters localizationHistory triggered')
+      return state.localizationHistory
+    },
+    rangeFrom: state => {
+      if (state.debug) console.log('getters rangeFrom triggered')
+      return state.rangeFrom
+    },
+    rangeTo: state => {
+      if (state.debug) console.log('getters rangeTo triggered')
+      return state.rangeTo
     }
   }
 })

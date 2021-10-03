@@ -37,7 +37,7 @@ export default {
       this.$modal.hide('device-details')
     },
     closeModal () {
-      this.setChosenOption('device')
+      this.setChosenOption('home')
     },
     ...mapMutations([
       'setChosenOption'
@@ -49,8 +49,21 @@ export default {
         (this.timestamp ? ('&timestamp=' + dateFormat(this.timestamp, 'yyyy-mm-dd-HH-MM-ss')) : '')
     },
     ...mapGetters([
-      'chosenDeviceId'
+      'chosenDeviceId',
+      'chosenOption'
     ])
+  },
+  watch: {
+    chosenOption: {
+      deep: true,
+      handler (newValue) {
+        if (newValue === 'view') {
+          this.show()
+        } else {
+          this.hide()
+        }
+      }
+    }
   },
   mount () {
     this.show()
