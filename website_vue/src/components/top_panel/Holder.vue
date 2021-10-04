@@ -4,6 +4,7 @@
                          background-color="rgba(255, 255, 255, .7)"/>
     <select-device v-if="chosenOption === 'device'"/>
     <localization-history v-if="chosenOption === 'history'"/>
+    <calendar v-if="chosenOption === 'calendar'"/>
     <home v-if="chosenOption === 'home'"/>
   </div>
 </template>
@@ -14,6 +15,7 @@ import VueElementLoading from 'vue-element-loading'
 import SelectDevice from './SelectDevice'
 import LocalizationHistory from './LocalizationHistory'
 import Home from './Home'
+import Calendar from './Calendar'
 
 export default {
   name: 'Holder',
@@ -21,7 +23,8 @@ export default {
     VueElementLoading,
     SelectDevice,
     LocalizationHistory,
-    Home
+    Home,
+    Calendar
   },
   computed: {
     ...mapGetters([
@@ -43,7 +46,7 @@ export default {
   z-index: 9999;
   left: 50px;
   bottom: 100vh;
-  background-color: rgba(230, 230, 230, 1.0);
+  background-color: rgb(112, 207, 128);
   color: #333333;
 }
 

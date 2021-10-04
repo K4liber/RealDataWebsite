@@ -47,7 +47,7 @@ export default {
     chosenDeviceId: {
       deep: true,
       handler (newValue) {
-        if (newValue !== null) {
+        if (newValue !== null && newValue !== '') {
           this.options = [
             'device',
             'home',
@@ -58,7 +58,7 @@ export default {
           let deviceTimestampRange = this.devicesTimestampsRange.get(this.chosenDeviceId)
           this.setRangeFrom(new Date(deviceTimestampRange.timestampFrom))
           this.setRangeTo(new Date(deviceTimestampRange.timestampTo))
-        } else if (newValue === null || newValue === '') {
+        } else {
           this.options = ['device']
         }
       }
@@ -97,7 +97,7 @@ export default {
     margin: 0;
     width: 50px;
     height: 100%;
-    background-color: rgba(230, 230, 230, 1.0);
+    background-color: rgb(112, 207, 128);
 }
 
 .center {
