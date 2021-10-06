@@ -52,21 +52,41 @@ export default {
     ...mapGetters([
       'map',
       'chosenDeviceId',
+      'chosenOption',
       'localizationHistory',
       'rangeFrom',
-      'rangeTo'
+      'rangeTo',
+      'sliderFrom',
+      'sliderTo'
     ])
   },
   watch: {
-    localizationHistory: {
+    chosenOption: {
       deep: true,
-      handler () {
-        if (this.chosenDeviceMarker) {
-          this.chosenDeviceMarker.remove()
+      handler (newValue) {
+        if (newValue === 'history') {
+          this.draw_polyline(true)
         }
-
+      }
+    },
+    sliderFrom: {
+      deep: true,
+      handler (newValue) {
         this.clear_path_elements()
         this.draw_polyline(true)
+      }
+    },
+    sliderTo: {
+      deep: true,
+      handler (newValue) {
+        this.clear_path_elements()
+        this.draw_polyline(true)
+      }
+    },
+    localizationHistory: {
+      deep: true,
+      handler (newValue) {
+        this.load_markers_from_history(true)
       }
     },
     chosenDeviceId: {
@@ -100,19 +120,6 @@ export default {
     }
   },
   methods: {
-    clear_path_elements () {
-      if (this.polyline != null) {
-        this.polyline.remove()
-      }
-
-      if (this.marker_from != null) {
-        this.marker_from.remove()
-      }
-
-      if (this.marker_to != null) {
-        this.marker_to.remove()
-      }
-    },
     directToClientLocalization () {
       this.map.locate({setView: true, maxZoom: 16})
       this.map.on('locationfound', (e) => {
@@ -141,59 +148,57 @@ export default {
       this.totalDistance = 0
 
       for (let [key, value] of new Map([...this.localizationHistory.entries()].sort())) {
-        if (key >= this.rangeFrom && key <= this.rangeTo) {
-          if (this.sortedMarkersFromHistory.length === 0) {
+        if (this.sortedMarkersFromHistory.length === 0) {
+          this.sortedMarkersFromHistory.push(
+            new MarkerTimestamp(
+              key,
+              L.marker(new L.LatLng(value.lat, value.lon), {icon: redIcon})
+            )
+          )
+        } else {
+          let previousPoint =
+            this.sortedMarkersFromHistory[this.sortedMarkersFromHistory.length - 1].marker.getLatLng()
+          let distance = calculateDistance(value.lat, value.lon, previousPoint.lat, previousPoint.lng)
+          this.totalDistance += distance
+
+          if (distance > 100) {
             this.sortedMarkersFromHistory.push(
               new MarkerTimestamp(
                 key,
                 L.marker(new L.LatLng(value.lat, value.lon), {icon: redIcon})
               )
             )
-          } else {
-            let previousPoint =
-              this.sortedMarkersFromHistory[this.sortedMarkersFromHistory.length - 1].marker.getLatLng()
-            let distance = calculateDistance(value.lat, value.lon, previousPoint.lat, previousPoint.lng)
-            this.totalDistance += distance
-
-            if (distance > 100) {
-              this.sortedMarkersFromHistory.push(
-                new MarkerTimestamp(
-                  key,
-                  L.marker(new L.LatLng(value.lat, value.lon), {icon: redIcon})
-                )
-              )
-            }
           }
         }
-        // Push one additional marker in the end
-        this.sortedMarkersFromHistory.push(
-          new MarkerTimestamp(
-            key,
-            L.marker(new L.LatLng(value.lat, value.lon), {icon: redIcon})
-          )
-        )
+      }
+    },
+    clear_path_elements () {
+      if (this.polyline != null) {
+        this.polyline.remove()
+      }
+
+      if (this.marker_from != null) {
+        this.marker_from.remove()
+      }
+
+      if (this.marker_to != null) {
+        this.marker_to.remove()
       }
     },
     draw_polyline (reload = false) {
-      console.log('draw_polyline')
-      console.log(this.rangeFrom)
-      console.log(this.rangeTo)
-      console.log(this.pathMode)
-
-      if (this.rangeFrom == null || this.rangeTo == null || this.pathMode === false) {
+      if (this.sliderFrom == null || this.sliderTo == null || this.pathMode === false) {
         return
       }
 
-      console.log('loading markers')
-      this.load_markers_from_history(reload)
-      let markerFromFound = false
-      let markerToFound = false
-      let markersInRange = []
+      this.clear_path_elements()
+      let markersTimestampsInRange = []
       this.totalDistance = 0
 
       for (const [index, markerTimestamp] of this.sortedMarkersFromHistory.entries()) {
-        if (this.rangeTo >= markerTimestamp.timestamp && markerTimestamp.timestamp >= this.rangeFrom) {
-          markersInRange.push(markerTimestamp.marker)
+        let markerDate = new Date(markerTimestamp.timestamp).valueOf()
+
+        if (this.sliderTo.valueOf() >= markerDate && markerDate >= this.sliderFrom.valueOf()) {
+          markersTimestampsInRange.push(markerTimestamp)
 
           if (index > 1) {
             let current = markerTimestamp.marker.getLatLng()
@@ -203,50 +208,52 @@ export default {
           }
         }
 
-        if (markerFromFound === false && markerTimestamp.timestamp >= this.rangeFrom) {
-          this.marker_from = markerTimestamp.marker
-          this.marker_from.bindPopup(
-            getMarkerPopUp(
-              'Start point',
-              this.chosenDeviceId,
-              markerTimestamp.timestamp.toLocaleString('pl'),
-              dateFormat(markerTimestamp.timestamp, 'yyyy-mm-dd-HH-MM-ss')
-            ))
-          this.marker_from.addTo(this.map)
-          markerFromFound = true
-        }
-
-        if (markerToFound === false && markerTimestamp.timestamp >= this.rangeTo) {
-          this.marker_to = markerTimestamp.marker
-          this.marker_to.setIcon(getCircleIcon('green'))
-          this.marker_to.bindPopup(
-            getMarkerPopUp(
-              'End point',
-              this.chosenDeviceId,
-              markerTimestamp.timestamp.toLocaleString('pl'),
-              dateFormat(markerTimestamp.timestamp, 'yyyy-mm-dd-HH-MM-ss')
-            ))
-          this.marker_to.addTo(this.map)
-          markerToFound = true
-        }
-
-        if (markerFromFound && markerToFound) {
+        if (markerDate > this.sliderTo.valueOf()) {
           break
         }
       }
-      let points = Array.from(markersInRange, (marker) => marker.getLatLng())
+
+      if (markersTimestampsInRange.length < 2) {
+        return
+      }
+
+      if (this.chosenDeviceMarker) {
+        this.chosenDeviceMarker.remove()
+      }
+
+      let markerTimestampFrom = markersTimestampsInRange[0]
+      this.marker_from = markerTimestampFrom.marker
+      this.marker_from.bindPopup(
+        getMarkerPopUp(
+          'Start point',
+          this.chosenDeviceId,
+          markerTimestampFrom.timestamp.toLocaleString('pl'),
+          dateFormat(markerTimestampFrom.timestamp, 'yyyy-mm-dd-HH-MM-ss')
+        )
+      )
+      this.marker_from.addTo(this.map)
+      let markerTimestampTo = markersTimestampsInRange[markersTimestampsInRange.length - 1]
+      this.marker_to = markerTimestampTo.marker
+      this.marker_to.setIcon(getCircleIcon('green'))
+      this.marker_to.bindPopup(
+        getMarkerPopUp(
+          'End point',
+          this.chosenDeviceId,
+          markerTimestampTo.timestamp.toLocaleString('pl'),
+          dateFormat(markerTimestampTo.timestamp, 'yyyy-mm-dd-HH-MM-ss')
+        )
+      )
+      this.marker_to.addTo(this.map)
+      let points = Array.from(markersTimestampsInRange, (markerTimestamp) => markerTimestamp.marker.getLatLng())
       this.polyline = new L.Polyline(points, {
         color: 'red',
         weight: 3,
         opacity: 0.5,
         smoothFactor: 1
       })
-      this.polyline.bindPopup(
-        this.totalDistanceString
-      )
+      this.polyline.bindPopup(this.totalDistanceString)
       this.polyline.addTo(this.map)
-      markersInRange.push(this.chosenDeviceMarker)
-      let group = L.featureGroup(markersInRange)
+      let group = L.featureGroup(Array.from(markersTimestampsInRange, (markerTimestamp) => markerTimestamp.marker))
       this.map.fitBounds(group.getBounds(), {padding: [50, 50]})
     },
     ...mapMutations([

@@ -8,7 +8,7 @@
     <div class="main">
       <img alt='' class="view-img" :src='this.img_src'/>
       <div>Device ID: {{ this.chosenDeviceId }}</div>
-      <div>{{ this.timestamp ? ("Timestamp: " + this.timestamp.toLocaleString("pl")) : '' }}</div>
+      <div>{{ this.historyStartDate ? ("Timestamp: " + this.historyStartDate.toLocaleString("pl")) : '' }}</div>
     </div>
   </modal>
 </template>
@@ -26,7 +26,7 @@ export default {
   name: 'DeviceDetails',
   data () {
     return {
-      timestamp: null
+      img_src: this.get_img_src
     }
   },
   methods: {
@@ -44,12 +44,13 @@ export default {
     ])
   },
   computed: {
-    img_src: function () {
+    get_img_src: function () {
       return env.API_URL + '/view?device_id=' + this.chosenDeviceId +
-        (this.timestamp ? ('&timestamp=' + dateFormat(this.timestamp, 'yyyy-mm-dd-HH-MM-ss')) : '')
+        (this.historyStartDate ? ('&timestamp=' + dateFormat(this.historyStartDate, 'yyyy-mm-dd-HH-MM-ss')) : '')
     },
     ...mapGetters([
       'chosenDeviceId',
+      'historyStartDate',
       'chosenOption'
     ])
   },
@@ -62,6 +63,18 @@ export default {
         } else {
           this.hide()
         }
+      }
+    },
+    historyStartDate: {
+      deep: true,
+      handler () {
+        this.img_src = this.get_img_src
+      }
+    },
+    chosenDeviceId: {
+      deep: true,
+      handler () {
+        this.img_src = this.get_img_src
       }
     }
   },

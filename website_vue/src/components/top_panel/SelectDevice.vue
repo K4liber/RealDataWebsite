@@ -4,7 +4,7 @@
     <datalist id="device_ids">
       <option :key="deviceId"
               v-for="[deviceId, deviceTimestampRange] in devicesTimestampsRange" :value="deviceTimestampRange.deviceId">
-          {{ deviceId }} ({{ deviceTimestampRange.timestampFrom }})
+          {{ deviceId }} ({{ deviceTimestampRange.timestampTo }})
       </option>
     </datalist>
   </div>
@@ -15,6 +15,7 @@ import {mapMutations, mapGetters} from 'vuex'
 import axios from 'axios'
 import {env} from '../../../config/env'
 import {DeviceTimestampsRange} from '../../data-class'
+import axiosRetry from 'axios-retry'
 
 export default {
   name: 'SelectDevice',
@@ -38,8 +39,51 @@ export default {
       'setChosenDeviceId',
       'setDevicesTimestampsRange',
       'setRangeFrom',
-      'setRangeTo'
-    ])
+      'setRangeTo',
+      'setIsLoading'
+    ]),
+    loadDevicesTimestampsRange () {
+      axiosRetry(axios, {
+        retries: 10,
+        retryDelay: (retryCount) => {
+          return retryCount * 1000
+        }
+      })
+
+      return new Promise(resolve => {
+        axios.get(env.API_URL + '/get_devices_timestamps_range').then(response => {
+          let responseList = JSON.parse(response.data.replaceAll('\'', ''))
+          let devicesTimestampsRange = new Map()
+
+          for (let index = 0; index < responseList.length; index++) {
+            let deviceTimestamp = responseList[index]
+            devicesTimestampsRange.set(
+              deviceTimestamp.device_id,
+              new DeviceTimestampsRange(
+                deviceTimestamp.device_id,
+                deviceTimestamp.timestamp_from,
+                deviceTimestamp.timestamp_to
+              )
+            )
+          }
+
+          this.setDevicesTimestampsRange(devicesTimestampsRange)
+          resolve(true)
+        })
+      })
+    },
+    async async_mounted () {
+      this.setIsLoading(true)
+      let loadingSucceed = await this.loadDevicesTimestampsRange()
+
+      if (loadingSucceed === false) {
+        this.setIsLoading(false)
+        alert('Loading devices timestams range failed.')
+        return
+      }
+
+      this.setIsLoading(false)
+    }
   },
   computed: {
     ...mapGetters([
@@ -47,24 +91,7 @@ export default {
     ])
   },
   mounted: function () {
-    axios.get(env.API_URL + '/get_devices_timestamps_range').then(response => {
-      let responseList = JSON.parse(response.data.replaceAll('\'', ''))
-      let devicesTimestampsRange = new Map()
-
-      for (let index = 0; index < responseList.length; index++) {
-        let deviceTimestamp = responseList[index]
-        devicesTimestampsRange.set(
-          deviceTimestamp.device_id,
-          new DeviceTimestampsRange(
-            deviceTimestamp.device_id,
-            deviceTimestamp.timestamp_from,
-            deviceTimestamp.timestamp_to
-          )
-        )
-      }
-
-      this.setDevicesTimestampsRange(devicesTimestampsRange)
-    })
+    this.async_mounted()
   }
 }
 

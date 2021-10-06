@@ -11,83 +11,106 @@
 </template>
 
 <script>
-import {Localization} from '../../data-class'
-import axios from 'axios'
-import {env} from '../../../config/env'
 import {mapMutations, mapGetters} from 'vuex'
+import $ from 'jquery'
+import 'jquery-ui-bundle'
+import 'jquery-ui-bundle/jquery-ui.min.css'
 
 export default {
   name: 'LocalizationHistory',
   data () {
-    return {}
+    return {
+      pathMode: true,
+      datetimeFrom: new Date(),
+      datetimeTo: new Date()
+    }
   },
   computed: {
     ...mapGetters([
-      'chosenDeviceId',
-      'dateTimeStringRange'
+      'historyStartDate',
+      'historyStopDate',
+      'localizationHistory'
     ])
   },
   mounted: function () {
-    this.load_history()
+    this.reload_slider()
   },
   methods: {
-    async load_history (reload = false) {
-      let getSucceed = await this.get_history(reload)
-
-      if (getSucceed === false) {
-        this.setIsLoading(false)
-        alert('Loading device history failed')
+    reload_slider () {
+      if (this.historyStartDate === null || this.historyStopDate === null) {
         return
       }
 
-      this.setIsLoading(false)
-    },
-    get_history (reload = false) {
-      this.setIsLoading(true)
+      this.datetimeFrom = this.historyStartDate
+      this.datetimeTo = this.historyStopDate
+      $('#slider-from').html(this.datetimeFrom.toLocaleString('pl'))
+      $('#slider-to').html(this.datetimeTo.toLocaleString('pl'))
+      let fromVal = this.datetimeFrom / 1000
+      let toVal = this.datetimeTo / 1000
+      let mapComponent = this
+      $('#slider').remove()
+      $('<div>', {
+        id: 'slider'
+      }).appendTo('#time-range')
 
-      return new Promise(resolve => {
-        if (reload === false && this.history) {
-          resolve(true)
-          return
-        }
-
-        setTimeout(() => {
-          console.log(this.dateTimeStringRange)
-          let dateTimeRange = this.dateTimeStringRange
-          let parameters = '?device_id=' + this.chosenDeviceId + '&from=' + dateTimeRange.fromString + '&to=' + dateTimeRange.toString
-
-          axios.get(env.API_URL + '/get_localizations' + parameters).then(response => {
-            let localizations = JSON.parse(response.data.replaceAll('\'', ''))
-            let history = new Map()
-
-            if (localizations === null || localizations.length === 0) {
-              resolve(true)
-              return
-            }
-
-            for (let index = 0; index < localizations.length; index++) {
-              let element = localizations[index]
-              history.set(
-                Date.parse(element.timestamp_str),
-                new Localization(
-                  element.lat,
-                  element.lon,
-                  element.timestamp_str
-                )
-              )
-            }
-
-            this.setLocalizationHistory(history)
-            resolve(true)
-          })
-        }, 10)
-        setTimeout(() => resolve(false), 30000)
-      })
+      if (this.pathMode) {
+        $('#slider').slider({
+          range: true,
+          min: fromVal,
+          max: toVal,
+          step: 10,
+          values: [fromVal, toVal],
+          slide: function (e, ui) {
+            mapComponent.datetimeFrom = new Date(ui.values[0] * 1000)
+            $('#slider-from').html(mapComponent.datetimeFrom.toLocaleString('pl'))
+            mapComponent.datetimeTo = new Date(ui.values[1] * 1000)
+            $('#slider-to').html(mapComponent.datetimeTo.toLocaleString('pl'))
+          }
+        })
+      } else {
+        $('#slider').slider({
+          range: false,
+          min: fromVal,
+          max: toVal,
+          step: 10,
+          value: fromVal,
+          slide: function (e, ui) {
+            mapComponent.datetimeFrom = new Date(ui.value * 1000)
+            $('#slider-from').html(mapComponent.datetimeFrom.toLocaleString('pl'))
+            $('#slider-to').html('')
+          }
+        })
+      }
     },
     ...mapMutations([
-      'setLocalizationHistory',
-      'setIsLoading'
+      'setSliderFrom',
+      'setSliderTo'
     ])
+  },
+  watch: {
+    localizationHistory: {
+      deep: true,
+      handler () {
+        console.log('HERE!!!! localizationHistory ')
+        this.reload_slider()
+      }
+    },
+    datetimeFrom: {
+      deep: true,
+      handler (newValue, oldValue) {
+        if (newValue !== oldValue) {
+          this.setSliderFrom(newValue)
+        }
+      }
+    },
+    datetimeTo: {
+      deep: true,
+      handler (newValue, oldValue) {
+        if (newValue !== oldValue) {
+          this.setSliderTo(newValue)
+        }
+      }
+    }
   }
 }
 
@@ -96,12 +119,16 @@ export default {
 <style scoped>
 
 .main {
-  text-align: left;
-  padding-top: 14px;
-  padding-left: 10px;
+  z-index: 9999;
+  text-align: center;
+  padding: 0;
+  padding-top: 5px;
+  padding-left: 1%;
 }
 
-#time-range p {
+#time-range {
+  width: 96%;
+  top: 10px;
   font-family: "Arial", sans-serif;
   font-size: 14px;
   color: #333;
@@ -122,8 +149,8 @@ export default {
 }
 
 .ui-slider {
-  position: relative;
-  text-align: left;
+  text-align: center;
+  width: 90% !important;
 }
 
 .ui-slider-horizontal .ui-slider-range {
@@ -190,7 +217,7 @@ export default {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  top: 50%;
+  top: 10px;
   margin-top: -4px;
   left: 50%;
   margin-left: -4px;
@@ -211,19 +238,20 @@ export default {
 
 #slider-from {
   float: left;
-  width: 46vw;
-  margin: 1vw;
+  text-align: left;
+  width: 48%;
+  margin: 1%;
 }
 
 #slider-to {
   float: left;
   text-align: right;
-  width: 46vw;
-  margin: 1vw;
+  width: 48%;
+  margin: 1%;
 }
 
 #slider-caption {
-  width: 96vw;
+  width: 100%;
 }
 
 </style>

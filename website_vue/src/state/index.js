@@ -9,14 +9,17 @@ export default new Vuex.Store({
     debug: true,
     map: null,
     chosenDeviceId: null,
-    defaultDaysRange: 2,
-    historyDaysBack: 2,
+    defaultDaysRange: 1,
     chosenOption: 'device',
     devicesTimestampsRange: [],
     isLoading: false,
     localizationHistory: [],
+    historyStartDate: null,
+    historyStopDate: null,
     rangeFrom: null,
-    rangeTo: null
+    rangeTo: null,
+    sliderFrom: null,
+    sliderTo: null
   },
   mutations: {
     setMap (state, map) {
@@ -26,10 +29,6 @@ export default new Vuex.Store({
     setChosenDeviceId (state, chosenDeviceId) {
       if (state.debug) console.log('setChosenDeviceId triggered')
       state.chosenDeviceId = chosenDeviceId
-    },
-    setHistoryDaysBack (state, daysBack) {
-      if (state.debug) console.log('setHistoryDaysBack triggered')
-      state.historyDaysBack = Math.max(state.defaultDaysRange, daysBack)
     },
     setChosenOption (state, chosenOption) {
       if (state.debug) console.log('setChosenOption triggered')
@@ -44,8 +43,19 @@ export default new Vuex.Store({
       state.isLoading = isLoading
     },
     setLocalizationHistory (state, localizationHistory) {
-      if (state.debug) console.log('setLocalizationHistory triggered')
+      if (state.debug) {
+        console.log('setLocalizationHistory triggered')
+        console.log(localizationHistory)
+      }
       state.localizationHistory = localizationHistory
+    },
+    setHistoryStartDate (state, historyStartDate) {
+      if (state.debug) console.log('setHistoryStartDate triggered')
+      state.historyStartDate = historyStartDate
+    },
+    setHistoryStopDate (state, historyStopDate) {
+      if (state.debug) console.log('setHistoryStopDate triggered')
+      state.historyStopDate = historyStopDate
     },
     setRangeFrom (state, rangeFrom) {
       if (state.debug) console.log('setRangeFrom triggered')
@@ -54,6 +64,14 @@ export default new Vuex.Store({
     setRangeTo (state, rangeTo) {
       if (state.debug) console.log('setRangeTo triggered')
       state.rangeTo = rangeTo
+    },
+    setSliderFrom (state, sliderFrom) {
+      if (state.debug) console.log('setSliderFrom triggered')
+      state.sliderFrom = sliderFrom
+    },
+    setSliderTo (state, sliderTo) {
+      if (state.debug) console.log('setSliderTo triggered')
+      state.sliderTo = sliderTo
     }
   },
   getters: {
@@ -69,23 +87,15 @@ export default new Vuex.Store({
       if (state.debug) console.log('getters defaultDaysRange triggered')
       return state.defaultDaysRange
     },
-    historyDaysBack: state => {
-      if (state.debug) console.log('getters historyDaysBack triggered')
-      return state.historyDaysBack
-    },
     dateTimeStringRange: state => {
-      if (state.debug) console.log('getters dateTimeStringRange triggered')
-      let fromDateTime = new Date()
-      fromDateTime.setDate(fromDateTime.getDate() - state.historyDaysBack)
-      let toDateTime = new Date()
-      toDateTime.setDate(toDateTime.getDate() - state.historyDaysBack + state.defaultDaysRange)
       if (state.debug) {
-        console.log(dateFormat(fromDateTime, 'yyyy-mm-dd-HH-MM-ss'))
-        console.log(dateFormat(toDateTime, 'yyyy-mm-dd-HH-MM-ss'))
+        console.log('getters dateTimeStringRange triggered')
+        console.log(dateFormat(state.historyStartDate, 'yyyy-mm-dd-HH-MM-ss'))
+        console.log(dateFormat(state.historyStopDate, 'yyyy-mm-dd-HH-MM-ss'))
       }
       return new DateTimeStringRange(
-        dateFormat(fromDateTime, 'yyyy-mm-dd-HH-MM-ss'),
-        dateFormat(toDateTime, 'yyyy-mm-dd-HH-MM-ss')
+        dateFormat(state.historyStartDate, 'yyyy-mm-dd-HH-MM-ss'),
+        dateFormat(state.historyStopDate, 'yyyy-mm-dd-HH-MM-ss')
       )
     },
     chosenOption: state => {
@@ -104,6 +114,14 @@ export default new Vuex.Store({
       if (state.debug) console.log('getters localizationHistory triggered')
       return state.localizationHistory
     },
+    historyStartDate: state => {
+      if (state.debug) console.log('getters historyStartDate triggered')
+      return state.historyStartDate
+    },
+    historyStopDate: state => {
+      if (state.debug) console.log('getters historyStopDate triggered')
+      return state.historyStopDate
+    },
     rangeFrom: state => {
       if (state.debug) console.log('getters rangeFrom triggered')
       return state.rangeFrom
@@ -111,6 +129,14 @@ export default new Vuex.Store({
     rangeTo: state => {
       if (state.debug) console.log('getters rangeTo triggered')
       return state.rangeTo
+    },
+    sliderFrom: state => {
+      if (state.debug) console.log('getters sliderFrom triggered')
+      return (state.sliderFrom !== null ? state.sliderFrom : (state.rangeFrom !== null ? state.rangeFrom : new Date()))
+    },
+    sliderTo: state => {
+      if (state.debug) console.log('getters sliderTo triggered')
+      return (state.sliderTo !== null ? state.sliderTo : (state.rangeTo !== null ? state.rangeTo : new Date()))
     }
   }
 })

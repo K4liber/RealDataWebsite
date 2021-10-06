@@ -80,7 +80,6 @@ export default {
     },
     getHistoryStartDatetime: function () {
       let sinceDateTime = new Date()
-      console.log(this.historyDaysBack)
       sinceDateTime.setDate(sinceDateTime.getDate() - this.historyDaysBack)
       return sinceDateTime.toISOString()
     },
@@ -403,7 +402,6 @@ export default {
 
         setTimeout(() => {
           let dateTimeRange = this.dateTimeStringRange
-          console.log(this.dateTimeStringRange)
           let parameters = '?device_id=' + this.chosenDeviceId + '&from=' + dateTimeRange.fromString + '&to=' + dateTimeRange.toString
 
           axios.get(env.API_URL + '/get_localizations' + parameters).then(response => {
@@ -455,11 +453,9 @@ export default {
       this.isLoading = false
     },
     reload_slider () {
-      console.log('reload_slider')
       if (this.sortedMarkersFromHistory === null || this.sortedMarkersFromHistory.length === 0) {
         return
       }
-      console.log('reload_slider 2')
 
       this.datetimeFrom = new Date(this.sortedMarkersFromHistory[0].timestamp)
       this.datetimeTo = new Date(this.sortedMarkersFromHistory[this.sortedMarkersFromHistory.length - 1].timestamp)

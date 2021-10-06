@@ -4,8 +4,8 @@
         style="display: inline-block;"
         type="date"
         v-model="historyStartDatetime"
-        :min-datetime="rangeFrom.toISOString()"
-        :max-datetime="rangeTo.toISOString()"
+        :min-datetime="rangeFrom ? rangeFrom.toISOString() : null"
+        :max-datetime="rangeTo ? rangeTo.toISOString() : null"
         :hidden="chosenOption !== 'calendar'">
       </datetime>
     </div>
@@ -13,7 +13,7 @@
 
 <script>
 import {Datetime} from 'vue-datetime'
-import {mapGetters} from 'vuex'
+import {mapGetters, mapMutations} from 'vuex'
 import 'vue-datetime/dist/vue-datetime.css'
 
 export default {
@@ -21,17 +21,46 @@ export default {
   components: {
     datetime: Datetime
   },
+  methods: {
+    ...mapMutations([
+      'setHistoryStartDate',
+      'setHistoryStopDate',
+      'setChosenOption'
+    ])
+  },
+  watch: {
+    historyStartDatetime: {
+      deep: true,
+      handler (newValue) {
+        let historyStartDate = new Date(newValue)
+        this.setHistoryStartDate(historyStartDate)
+        let dateOffset = (24 * 60 * 60 * 1000) * this.defaultDaysRange
+        let historyStopDate = new Date()
+        historyStopDate.setTime(historyStartDate.getTime() + dateOffset)
+
+        if (historyStopDate > this.rangeTo && this.rangeTo !== null) {
+          this.setHistoryStopDate(this.rangeTo)
+        } else {
+          this.setHistoryStopDate(historyStopDate)
+        }
+
+        if (this.chosenDeviceId && this.chosenOption === 'calendar') {
+          this.setChosenOption('history')
+        }
+      }
+    }
+  },
   computed: {
     ...mapGetters([
+      'chosenDeviceId',
+      'defaultDaysRange',
       'chosenOption',
       'rangeFrom',
-      'rangeTo',
-      'historyDaysBack'
+      'rangeTo'
     ]),
     getHistoryStartDatetime: function () {
       let sinceDateTime = new Date()
-      console.log(this.historyDaysBack)
-      sinceDateTime.setDate(sinceDateTime.getDate() - this.historyDaysBack)
+      sinceDateTime.setDate(sinceDateTime.getDate() - this.defaultDaysRange)
       return sinceDateTime.toISOString()
     }
   },

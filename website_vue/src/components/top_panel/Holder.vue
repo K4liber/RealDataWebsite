@@ -2,10 +2,10 @@
   <div class="holder">
     <vue-element-loading :active="isLoading" :is-full-screen="true"
                          background-color="rgba(255, 255, 255, .7)"/>
-    <select-device v-if="chosenOption === 'device'"/>
-    <localization-history v-if="chosenOption === 'history'"/>
-    <calendar v-if="chosenOption === 'calendar'"/>
-    <home v-if="chosenOption === 'home'"/>
+    <select-device :hidden="chosenOption !== 'device'"/>
+    <localization-history :hidden="chosenOption !== 'history'"/>
+    <calendar :hidden="chosenOption !== 'calendar'"/>
+    <home :hidden="chosenOption !== 'home'"/>
   </div>
 </template>
 
@@ -39,12 +39,11 @@ export default {
 
 .holder {
   height: 50px;
-  width: 96vw;
+  width: 100vw;
   position: relative;
-  padding: 0;
-  margin: 0;
+  margin-left: 50px;
   z-index: 9999;
-  left: 50px;
+  left: 0px;
   bottom: 100vh;
   background-color: rgb(112, 207, 128);
   color: #333333;
