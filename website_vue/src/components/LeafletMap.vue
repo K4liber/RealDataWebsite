@@ -146,9 +146,17 @@ export default {
       let redIcon = getCircleIcon('red')
       this.sortedMarkersFromHistory = []
       this.totalDistance = 0
+      let elementIndex = 0
 
       for (let [key, value] of new Map([...this.localizationHistory.entries()].sort())) {
         if (this.sortedMarkersFromHistory.length === 0) {
+          this.sortedMarkersFromHistory.push(
+            new MarkerTimestamp(
+              key,
+              L.marker(new L.LatLng(value.lat, value.lon), {icon: redIcon})
+            )
+          )
+        } else if (elementIndex === (this.localizationHistory.size - 1)) {
           this.sortedMarkersFromHistory.push(
             new MarkerTimestamp(
               key,
@@ -170,6 +178,8 @@ export default {
             )
           }
         }
+
+        elementIndex = elementIndex + 1
       }
     },
     clear_path_elements () {
@@ -193,6 +203,7 @@ export default {
       this.clear_path_elements()
       let markersTimestampsInRange = []
       this.totalDistance = 0
+      console.log(this.sortedMarkersFromHistory)
 
       for (const [index, markerTimestamp] of this.sortedMarkersFromHistory.entries()) {
         let markerDate = new Date(markerTimestamp.timestamp).valueOf()
@@ -209,6 +220,7 @@ export default {
         }
 
         if (markerDate > this.sliderTo.valueOf()) {
+          console.log('here the date: ' + markerDate)
           break
         }
       }
@@ -227,7 +239,7 @@ export default {
         getMarkerPopUp(
           'Start point',
           this.chosenDeviceId,
-          markerTimestampFrom.timestamp.toLocaleString('pl'),
+          new Date(markerTimestampFrom.timestamp).toLocaleString('pl'),
           dateFormat(markerTimestampFrom.timestamp, 'yyyy-mm-dd-HH-MM-ss')
         )
       )
@@ -239,7 +251,7 @@ export default {
         getMarkerPopUp(
           'End point',
           this.chosenDeviceId,
-          markerTimestampTo.timestamp.toLocaleString('pl'),
+          new Date(markerTimestampTo.timestamp).toLocaleString('pl'),
           dateFormat(markerTimestampTo.timestamp, 'yyyy-mm-dd-HH-MM-ss')
         )
       )

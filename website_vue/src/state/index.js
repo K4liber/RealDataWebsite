@@ -9,7 +9,7 @@ export default new Vuex.Store({
     debug: true,
     map: null,
     chosenDeviceId: null,
-    defaultDaysRange: 1,
+    defaultDaysRange: 2,
     chosenOption: 'device',
     devicesTimestampsRange: [],
     isLoading: false,
@@ -55,7 +55,8 @@ export default new Vuex.Store({
     },
     setHistoryStopDate (state, historyStopDate) {
       if (state.debug) console.log('setHistoryStopDate triggered')
-      state.historyStopDate = historyStopDate
+      let dateNow = new Date()
+      state.historyStopDate = historyStopDate.valueOf() < dateNow.valueOf() ? historyStopDate : dateNow
     },
     setRangeFrom (state, rangeFrom) {
       if (state.debug) console.log('setRangeFrom triggered')

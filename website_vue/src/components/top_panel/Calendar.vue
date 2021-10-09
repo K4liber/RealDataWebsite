@@ -60,7 +60,7 @@ export default {
     ]),
     getHistoryStartDatetime: function () {
       let sinceDateTime = new Date()
-      sinceDateTime.setDate(sinceDateTime.getDate() - this.defaultDaysRange)
+      sinceDateTime.setDate(sinceDateTime.getDate() - this.defaultDaysRange + 1)
       return sinceDateTime.toISOString()
     }
   },

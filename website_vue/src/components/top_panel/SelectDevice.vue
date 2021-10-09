@@ -30,6 +30,7 @@ export default {
       handler (newValue) {
         if (newValue !== null) {
           this.setChosenDeviceId(newValue)
+          this.setChosenOption('history')
         }
       }
     }
@@ -37,6 +38,7 @@ export default {
   methods: {
     ...mapMutations([
       'setChosenDeviceId',
+      'setChosenOption',
       'setDevicesTimestampsRange',
       'setRangeFrom',
       'setRangeTo',
@@ -44,7 +46,7 @@ export default {
     ]),
     loadDevicesTimestampsRange () {
       axiosRetry(axios, {
-        retries: 10,
+        retries: 20,
         retryDelay: (retryCount) => {
           return retryCount * 1000
         }
