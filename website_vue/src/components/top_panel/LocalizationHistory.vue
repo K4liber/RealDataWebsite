@@ -126,10 +126,12 @@ export default {
 }
 
 #time-range {
-  width: 96%;
+  width: calc(94% - 50px);
   top: 10px;
+  margin-left: 2%;
+  margin-right: 2%;
   font-family: "Arial", sans-serif;
-  font-size: 14px;
+  font-size: 11px;
   color: #333;
 }
 
@@ -238,15 +240,19 @@ export default {
 #slider-from {
   float: left;
   text-align: left;
-  width: 48%;
-  margin: 1%;
+  width: 49%;
+  margin-left: 1%;
+  position: relative;
+  bottom: -20px;
 }
 
 #slider-to {
   float: left;
   text-align: right;
-  width: 48%;
-  margin: 1%;
+  width: 49%;
+  margin-right: 1%;
+  position: relative;
+  bottom: -20px;
 }
 
 #slider-caption {
