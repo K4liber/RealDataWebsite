@@ -203,7 +203,6 @@ export default {
       this.clear_path_elements()
       let markersTimestampsInRange = []
       this.totalDistance = 0
-      console.log(this.sortedMarkersFromHistory)
 
       for (const [index, markerTimestamp] of this.sortedMarkersFromHistory.entries()) {
         let markerDate = new Date(markerTimestamp.timestamp).valueOf()
@@ -220,7 +219,6 @@ export default {
         }
 
         if (markerDate > this.sliderTo.valueOf()) {
-          console.log('here the date: ' + markerDate)
           break
         }
       }

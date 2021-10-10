@@ -91,7 +91,6 @@ export default {
     localizationHistory: {
       deep: true,
       handler () {
-        console.log('HERE!!!! localizationHistory ')
         this.reload_slider()
       }
     },

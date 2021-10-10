@@ -43,10 +43,7 @@ export default new Vuex.Store({
       state.isLoading = isLoading
     },
     setLocalizationHistory (state, localizationHistory) {
-      if (state.debug) {
-        console.log('setLocalizationHistory triggered')
-        console.log(localizationHistory)
-      }
+      if (state.debug) console.log('setLocalizationHistory triggered')
       state.localizationHistory = localizationHistory
     },
     setHistoryStartDate (state, historyStartDate) {
@@ -89,11 +86,7 @@ export default new Vuex.Store({
       return state.defaultDaysRange
     },
     dateTimeStringRange: state => {
-      if (state.debug) {
-        console.log('getters dateTimeStringRange triggered')
-        console.log(dateFormat(state.historyStartDate, 'yyyy-mm-dd-HH-MM-ss'))
-        console.log(dateFormat(state.historyStopDate, 'yyyy-mm-dd-HH-MM-ss'))
-      }
+      if (state.debug) console.log('getters dateTimeStringRange triggered')
       return new DateTimeStringRange(
         dateFormat(state.historyStartDate, 'yyyy-mm-dd-HH-MM-ss'),
         dateFormat(state.historyStopDate, 'yyyy-mm-dd-HH-MM-ss')
