@@ -92,6 +92,10 @@ export default {
     chosenDeviceId: {
       deep: true,
       handler (newValue) {
+        if (newValue === null || newValue === '') {
+          return
+        }
+
         if (newValue !== null && this.userMarker != null) {
           this.userMarker.remove()
         }

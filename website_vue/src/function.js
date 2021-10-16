@@ -57,3 +57,24 @@ export function setZIndex (leafletMap, marker, zIndex) {
   let position = leafletMap.latLngToLayerPoint(marker.getLatLng()).round()
   marker.setZIndexOffset(zIndex - position.y)
 }
+
+export function toDate (dateString, format, delimiter) {
+  var formatedDate = null
+  var formatItems = format.split(delimiter)
+  var dateItems = dateString.split(delimiter)
+  var monthIndex = formatItems.indexOf('mm')
+  var dayIndex = formatItems.indexOf('dd')
+  var yearIndex = formatItems.indexOf('yyyy')
+  var hourIndex = formatItems.indexOf('HH')
+  var minuteIndex = formatItems.indexOf('MM')
+  var secondIndex = formatItems.indexOf('ss')
+  formatedDate = new Date(
+    dateItems[yearIndex],
+    parseInt(dateItems[monthIndex]) - 1,
+    parseInt(dateItems[dayIndex]),
+    parseInt(dateItems[hourIndex]),
+    parseInt(dateItems[minuteIndex]),
+    parseInt(dateItems[secondIndex])
+  )
+  return formatedDate
+}

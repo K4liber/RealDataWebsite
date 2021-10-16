@@ -41,7 +41,11 @@ export default {
     },
     chosenDeviceId: {
       deep: true,
-      handler () {
+      handler (newValue) {
+        if (newValue === null || newValue === '') {
+          return
+        }
+
         this.load_history(true)
       }
     }
