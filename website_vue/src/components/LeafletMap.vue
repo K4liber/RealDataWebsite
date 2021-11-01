@@ -35,7 +35,14 @@ export default {
       zoomOffset: -1
     }
     ).addTo(this.map)
-    this.directToClientLocalization()
+
+    if (this.$route.matched.length > 0) {
+      let firstMatched = this.$route.matched[0]
+
+      if (firstMatched.name === 'home') {
+        this.directToClientLocalization()
+      }
+    }
   },
   data () {
     return {
@@ -61,10 +68,27 @@ export default {
     ])
   },
   watch: {
+    localizationHistory: {
+      deep: true,
+      handler (newValue) {
+        if (newValue) {
+          this.setIsLoading(true)
+          this.load_markers_from_history(true)
+
+          if (this.sortedMarkersFromHistory.length && this.chosenOption === 'history') {
+            this.draw_polyline(true)
+          }
+
+          this.setIsLoading(false)
+        }
+      }
+    },
     chosenOption: {
       deep: true,
       handler (newValue) {
-        if (newValue === 'history') {
+        this.load_markers_from_history(false)
+
+        if (this.sortedMarkersFromHistory.length && newValue === 'history') {
           this.draw_polyline(true)
         }
       }
@@ -81,12 +105,6 @@ export default {
       handler (newValue) {
         this.clear_path_elements()
         this.draw_polyline(true)
-      }
-    },
-    localizationHistory: {
-      deep: true,
-      handler (newValue) {
-        this.load_markers_from_history(true)
       }
     },
     chosenDeviceId: {
@@ -106,6 +124,7 @@ export default {
 
         this.clear_path_elements()
         axios.get(env.API_URL + '/get_localization?device_id=' + newValue).then(response => {
+          this.setIsDeviceIdCorrect(true)
           let localization = JSON.parse(response.data)
           let latLng = [localization.lat, localization.lon]
           let greenIcon = getMarkerIcon('green')
@@ -143,25 +162,27 @@ export default {
       )
     },
     load_markers_from_history (reload = false) {
-      if (this.rangeFrom === null || this.rangeTo === null || (this.sortedMarkersFromHistory.length && reload === false)) {
+      if (this.sortedMarkersFromHistory.length && reload === false) {
         return
       }
 
       let redIcon = getCircleIcon('red')
-      this.sortedMarkersFromHistory = []
       this.totalDistance = 0
       let elementIndex = 0
+      let tempSortedMarkersFromHistory = []
 
-      for (let [key, value] of new Map([...this.localizationHistory.entries()].sort())) {
-        if (this.sortedMarkersFromHistory.length === 0) {
-          this.sortedMarkersFromHistory.push(
+      for (const value of this.localizationHistory) {
+        let key = Date.parse(value.timestampStr)
+
+        if (tempSortedMarkersFromHistory.length === 0) {
+          tempSortedMarkersFromHistory.push(
             new MarkerTimestamp(
               key,
               L.marker(new L.LatLng(value.lat, value.lon), {icon: redIcon})
             )
           )
         } else if (elementIndex === (this.localizationHistory.size - 1)) {
-          this.sortedMarkersFromHistory.push(
+          tempSortedMarkersFromHistory.push(
             new MarkerTimestamp(
               key,
               L.marker(new L.LatLng(value.lat, value.lon), {icon: redIcon})
@@ -169,12 +190,12 @@ export default {
           )
         } else {
           let previousPoint =
-            this.sortedMarkersFromHistory[this.sortedMarkersFromHistory.length - 1].marker.getLatLng()
+            tempSortedMarkersFromHistory[tempSortedMarkersFromHistory.length - 1].marker.getLatLng()
           let distance = calculateDistance(value.lat, value.lon, previousPoint.lat, previousPoint.lng)
           this.totalDistance += distance
 
           if (distance > 100) {
-            this.sortedMarkersFromHistory.push(
+            tempSortedMarkersFromHistory.push(
               new MarkerTimestamp(
                 key,
                 L.marker(new L.LatLng(value.lat, value.lon), {icon: redIcon})
@@ -185,6 +206,8 @@ export default {
 
         elementIndex = elementIndex + 1
       }
+
+      this.sortedMarkersFromHistory = tempSortedMarkersFromHistory
     },
     clear_path_elements () {
       if (this.polyline != null) {
@@ -271,7 +294,9 @@ export default {
       this.map.fitBounds(group.getBounds(), {padding: [50, 50]})
     },
     ...mapMutations([
-      'setMap'
+      'setMap',
+      'setIsDeviceIdCorrect',
+      'setIsLoading'
     ])
   }
 }

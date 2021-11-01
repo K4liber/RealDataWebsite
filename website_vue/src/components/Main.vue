@@ -29,55 +29,50 @@ export default {
     ...mapGetters([
       'historyStartDate',
       'chosenDeviceId',
-      'dateTimeStringRange'
+      'chosenOption',
+      'isDeviceIdCorrect',
+      'dateTimeStringRange',
+      'localizationHistory'
     ])
   },
   watch: {
-    historyStartDate: {
-      deep: true,
-      handler () {
-        this.load_history(true)
-      }
-    },
-    chosenDeviceId: {
+    chosenOption: {
       deep: true,
       handler (newValue) {
-        if (newValue === null || newValue === '') {
-          return
+        if (newValue === 'home') {
+          this.$router.push('/home')
+        } else if (newValue === 'history') {
+          this.load_history(false)
         }
-
-        this.load_history(true)
       }
     }
   },
   methods: {
-    async load_history (reload = false) {
-      let getSucceed = await this.get_history(reload)
-
-      if (getSucceed === false) {
-        this.setIsLoading(false)
-        alert('Loading device history failed')
-        return
+    async load_history (reload) {
+      if (reload) {
+        this.setLocalizationHistory([])
       }
 
-      this.setIsLoading(false)
-    },
-    get_history (reload = false) {
       this.setIsLoading(true)
+      var self = this
 
-      return new Promise(resolve => {
-        if (reload === false && this.history) {
-          resolve(true)
-          return
+      await this.get_history().then(
+        function (value) {
+          if (value) {
+            self.setIsLoading(false)
+          }
         }
-
+      )
+    },
+    get_history () {
+      return new Promise(resolve => {
         setTimeout(() => {
           let dateTimeRange = this.dateTimeStringRange
           let parameters = '?device_id=' + this.chosenDeviceId + '&from=' + dateTimeRange.fromString + '&to=' + dateTimeRange.toString
 
           axios.get(env.API_URL + '/get_localizations' + parameters).then(response => {
             let localizations = JSON.parse(response.data.replaceAll('\'', ''))
-            let history = new Map()
+            let history = []
 
             if (localizations === null || localizations.length === 0) {
               resolve(true)
@@ -86,8 +81,7 @@ export default {
 
             for (let index = 0; index < localizations.length; index++) {
               let element = localizations[index]
-              history.set(
-                Date.parse(element.timestamp_str),
+              history.push(
                 new Localization(
                   element.lat,
                   element.lon,
@@ -100,13 +94,27 @@ export default {
             resolve(true)
           })
         }, 10)
-        setTimeout(() => resolve(false), 30000)
+        setTimeout(() => resolve(false), 120000)
       })
     },
     ...mapMutations([
       'setLocalizationHistory',
-      'setIsLoading'
+      'setIsLoading',
+      'setChosenDeviceId'
     ])
+  },
+  mounted: function () {
+    if (this.$route.matched.length > 0) {
+      let firstMatched = this.$route.matched[0]
+
+      if (firstMatched.name === 'device_id') {
+        let deviceIdFromURL = this.$route.params.device_id
+
+        if (deviceIdFromURL !== this.chosenDeviceId) {
+          this.setChosenDeviceId(deviceIdFromURL)
+        }
+      }
+    }
   }
 }
 </script>

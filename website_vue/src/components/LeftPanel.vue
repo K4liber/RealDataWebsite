@@ -40,24 +40,16 @@ export default {
     ...mapGetters([
       'chosenDeviceId',
       'chosenOption',
-      'devicesTimestampsRange'
+      'devicesTimestampsRange',
+      'isDeviceIdCorrect'
     ])
   },
   watch: {
     chosenDeviceId: {
       deep: true,
       handler (newValue) {
-        if (newValue !== null && newValue !== '') {
-          this.options = [
-            'device',
-            'home',
-            'view',
-            'history',
-            'calendar'
-          ]
-          let deviceTimestampRange = this.devicesTimestampsRange.get(this.chosenDeviceId)
-          this.setRangeFrom(new Date(deviceTimestampRange.timestampFrom))
-          this.setRangeTo(new Date(deviceTimestampRange.timestampTo))
+        if (newValue !== null && newValue !== '' && this.isDeviceIdCorrect) {
+          this.reloadOptions()
         } else {
           this.options = ['device']
         }
@@ -68,9 +60,26 @@ export default {
       handler (newValue) {
         this.chooseOption(newValue)
       }
+    },
+    isDeviceIdCorrect: {
+      deep: true,
+      handler (newValue) {
+        if (newValue) {
+          this.reloadOptions()
+        }
+      }
     }
   },
   methods: {
+    reloadOptions () {
+      this.options = [
+        'device',
+        'home',
+        'view',
+        'history',
+        'calendar'
+      ]
+    },
     chooseOption: function (option) {
       let optionsNewOrder = this.options.slice(0, this.options.length)
       let chosenIndex = this.options.indexOf(option)
@@ -80,9 +89,7 @@ export default {
       this.setChosenOption(option)
     },
     ...mapMutations([
-      'setChosenOption',
-      'setRangeFrom',
-      'setRangeTo'
+      'setChosenOption'
     ])
   }
 }

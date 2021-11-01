@@ -17,6 +17,13 @@ import {env} from '../../../config/env'
 import {DeviceTimestampsRange} from '../../data-class'
 import axiosRetry from 'axios-retry'
 
+axiosRetry(axios, {
+  retries: 20,
+  retryDelay: (retryCount) => {
+    return retryCount * 1000
+  }
+})
+
 export default {
   name: 'SelectDevice',
   data () {
@@ -31,6 +38,7 @@ export default {
         if (newValue !== null) {
           this.setChosenDeviceId(newValue)
           this.setChosenOption('history')
+          this.$router.push('/device/' + newValue)
         }
       }
     }
@@ -40,18 +48,10 @@ export default {
       'setChosenDeviceId',
       'setChosenOption',
       'setDevicesTimestampsRange',
-      'setRangeFrom',
       'setRangeTo',
       'setIsLoading'
     ]),
     loadDevicesTimestampsRange () {
-      axiosRetry(axios, {
-        retries: 20,
-        retryDelay: (retryCount) => {
-          return retryCount * 1000
-        }
-      })
-
       return new Promise(resolve => {
         axios.get(env.API_URL + '/get_devices_timestamps_range').then(response => {
           let responseList = JSON.parse(response.data.replaceAll('\'', ''))
@@ -75,16 +75,11 @@ export default {
       })
     },
     async async_mounted () {
-      this.setIsLoading(true)
       let loadingSucceed = await this.loadDevicesTimestampsRange()
 
       if (loadingSucceed === false) {
-        this.setIsLoading(false)
         alert('Loading devices timestams range failed.')
-        return
       }
-
-      this.setIsLoading(false)
     }
   },
   computed: {

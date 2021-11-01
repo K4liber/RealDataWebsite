@@ -19,7 +19,8 @@ export default new Vuex.Store({
     rangeFrom: null,
     rangeTo: null,
     sliderFrom: null,
-    sliderTo: null
+    sliderTo: null,
+    isDeviceIdCorrect: false
   },
   mutations: {
     setMap (state, map) {
@@ -36,6 +37,13 @@ export default new Vuex.Store({
     },
     setDevicesTimestampsRange (state, devicesTimestampsRange) {
       if (state.debug) console.log('setDevicesTimestampsRange triggered')
+
+      if (devicesTimestampsRange.has(state.chosenDeviceId)) {
+        let deviceTimestampRange = devicesTimestampsRange.get(state.chosenDeviceId)
+        state.rangeFrom = new Date(deviceTimestampRange.timestampFrom)
+        state.rangeTo = new Date(deviceTimestampRange.timestampTo)
+      }
+
       state.devicesTimestampsRange = devicesTimestampsRange
     },
     setIsLoading (state, isLoading) {
@@ -55,14 +63,6 @@ export default new Vuex.Store({
       let dateNow = new Date()
       state.historyStopDate = historyStopDate.valueOf() < dateNow.valueOf() ? historyStopDate : dateNow
     },
-    setRangeFrom (state, rangeFrom) {
-      if (state.debug) console.log('setRangeFrom triggered')
-      state.rangeFrom = rangeFrom
-    },
-    setRangeTo (state, rangeTo) {
-      if (state.debug) console.log('setRangeTo triggered')
-      state.rangeTo = rangeTo
-    },
     setSliderFrom (state, sliderFrom) {
       if (state.debug) console.log('setSliderFrom triggered')
       state.sliderFrom = sliderFrom
@@ -70,6 +70,10 @@ export default new Vuex.Store({
     setSliderTo (state, sliderTo) {
       if (state.debug) console.log('setSliderTo triggered')
       state.sliderTo = sliderTo
+    },
+    setIsDeviceIdCorrect (state, isDeviceIdCorrect) {
+      if (state.debug) console.log('setIsDeviceIdCorrect triggered')
+      state.isDeviceIdCorrect = isDeviceIdCorrect
     }
   },
   getters: {
@@ -131,6 +135,10 @@ export default new Vuex.Store({
     sliderTo: state => {
       if (state.debug) console.log('getters sliderTo triggered')
       return (state.sliderTo !== null ? state.sliderTo : (state.rangeTo !== null ? state.rangeTo : new Date()))
+    },
+    isDeviceIdCorrect: state => {
+      if (state.debug) console.log('getters isDeviceIdCorrect triggered')
+      return state.isDeviceIdCorrect
     }
   }
 })

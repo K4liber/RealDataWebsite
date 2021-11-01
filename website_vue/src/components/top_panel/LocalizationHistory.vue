@@ -28,8 +28,7 @@ export default {
   computed: {
     ...mapGetters([
       'historyStartDate',
-      'historyStopDate',
-      'localizationHistory'
+      'historyStopDate'
     ])
   },
   mounted: function () {
@@ -88,7 +87,13 @@ export default {
     ])
   },
   watch: {
-    localizationHistory: {
+    historyStartDate: {
+      deep: true,
+      handler () {
+        this.reload_slider()
+      }
+    },
+    historyStopDate: {
       deep: true,
       handler () {
         this.reload_slider()

@@ -1,6 +1,6 @@
 <template>
   <div class="holder">
-    <vue-element-loading :active="isLoading" :is-full-screen="true"
+    <vue-element-loading :active="showLoading === true" :is-full-screen="true"
                          background-color="rgba(255, 255, 255, .7)"/>
     <select-device :hidden="chosenOption !== 'device'"/>
     <localization-history :hidden="chosenOption !== 'history'"/>
@@ -25,6 +25,19 @@ export default {
     LocalizationHistory,
     Home,
     Calendar
+  },
+  data () {
+    return {
+      showLoading: false
+    }
+  },
+  watch: {
+    isLoading: {
+      deep: true,
+      handler (newValue) {
+        this.showLoading = newValue
+      }
+    }
   },
   computed: {
     ...mapGetters([
