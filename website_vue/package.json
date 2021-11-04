@@ -6,7 +6,7 @@
   "private": true,
   "scripts": {
     "dev": "webpack-dev-server --inline --progress --config build/webpack.dev.conf.js",
-    "start": "http-server dist -p 8080",
+    "start": "http-server -P http://localhost:8080? dist",
     "unit": "jest --config test/unit/jest.conf.js --coverage",
     "e2e": "node test/e2e/runner.js",
     "test": "npm run unit && npm run e2e",
@@ -22,6 +22,7 @@
     "http-server": "^13.0.2",
     "jquery-ui-bundle": "^1.12.1-migrate",
     "leaflet": "^1.7.1",
+    "live-server": "^1.2.1",
     "luxon": "^1.15.0",
     "vue": "^2.5.2",
     "vue-axios": "^3.2.5",
