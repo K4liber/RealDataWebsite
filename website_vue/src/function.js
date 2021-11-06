@@ -1,7 +1,7 @@
 import {env} from '../config/env'
 import L from 'leaflet'
 
-export function getMarkerPopUp (title, deviceId, timestamp, viewTimestamp) {
+export function getMarkerPopUp (title, deviceId, timestampStr, viewTimestamp) {
   let imgSrc = env.API_URL + '/view?device_id=' + deviceId +
     (viewTimestamp ? ('&timestamp=' + viewTimestamp) : '')
   return "<div style='margin: 0 auto;text-align: center;'>" +
@@ -10,7 +10,7 @@ export function getMarkerPopUp (title, deviceId, timestamp, viewTimestamp) {
       "style='height:80px;max-width:80px;width: expression(this.width > 80 ? 80: true);'" +
       " src='" + imgSrc + "'/>") : '') +
     (deviceId ? ('<div>ID: ' + deviceId + '</div>') : '') +
-    '<div>T: ' + timestamp + '</div>' +
+    '<div>T: ' + new Date(timestampStr + ' +0000').toLocaleString('pl') + '</div>' +
     '</div>'
 }
 

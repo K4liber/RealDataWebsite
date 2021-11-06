@@ -56,6 +56,12 @@ export default {
     }
   },
   computed: {
+    sliderToMilisecond () {
+      return this.sliderTo.valueOf()
+    },
+    sliderFromMilisecond () {
+      return this.sliderFrom.valueOf()
+    },
     ...mapGetters([
       'map',
       'chosenDeviceId',
@@ -122,6 +128,7 @@ export default {
           this.chosenDeviceMarker.remove()
         }
 
+        this.setIsLoading(true)
         this.clear_path_elements()
         axios.get(env.API_URL + '/get_localization?device_id=' + newValue).then(response => {
           this.setIsDeviceIdCorrect(true)
@@ -138,6 +145,7 @@ export default {
             )
           )
           this.map.setView(latLng, 16)
+          this.setIsLoading(false)
         })
       }
     }
@@ -168,20 +176,12 @@ export default {
 
       let redIcon = getCircleIcon('red')
       this.totalDistance = 0
-      let elementIndex = 0
       let tempSortedMarkersFromHistory = []
 
-      for (const value of this.localizationHistory) {
+      for (const [index, value] of this.localizationHistory.entries()) {
         let key = Date.parse(value.timestampStr)
 
         if (tempSortedMarkersFromHistory.length === 0) {
-          tempSortedMarkersFromHistory.push(
-            new MarkerTimestamp(
-              key,
-              L.marker(new L.LatLng(value.lat, value.lon), {icon: redIcon})
-            )
-          )
-        } else if (elementIndex === (this.localizationHistory.size - 1)) {
           tempSortedMarkersFromHistory.push(
             new MarkerTimestamp(
               key,
@@ -194,7 +194,7 @@ export default {
           let distance = calculateDistance(value.lat, value.lon, previousPoint.lat, previousPoint.lng)
           this.totalDistance += distance
 
-          if (distance > 100) {
+          if (distance > 10 || index > this.localizationHistory.length - 10) {
             tempSortedMarkersFromHistory.push(
               new MarkerTimestamp(
                 key,
@@ -203,8 +203,6 @@ export default {
             )
           }
         }
-
-        elementIndex = elementIndex + 1
       }
 
       this.sortedMarkersFromHistory = tempSortedMarkersFromHistory
@@ -232,9 +230,10 @@ export default {
       this.totalDistance = 0
 
       for (const [index, markerTimestamp] of this.sortedMarkersFromHistory.entries()) {
-        let markerDate = new Date(markerTimestamp.timestamp).valueOf()
+        let markerDateStr = dateFormat(new Date(markerTimestamp.timestamp), 'yyyy/mm/dd HH:MM:ss') + ' +0000'
+        let markerDate = new Date(markerDateStr).valueOf()
 
-        if (this.sliderTo.valueOf() >= markerDate && markerDate >= this.sliderFrom.valueOf()) {
+        if (this.sliderToMilisecond >= markerDate && markerDate >= this.sliderFromMilisecond) {
           markersTimestampsInRange.push(markerTimestamp)
 
           if (index > 1) {
@@ -245,7 +244,7 @@ export default {
           }
         }
 
-        if (markerDate > this.sliderTo.valueOf()) {
+        if (markerDate > this.sliderToMilisecond) {
           break
         }
       }
@@ -264,7 +263,7 @@ export default {
         getMarkerPopUp(
           'Start point',
           this.chosenDeviceId,
-          new Date(markerTimestampFrom.timestamp).toLocaleString('pl'),
+          dateFormat(markerTimestampFrom.timestamp, 'yyyy/mm/dd HH:MM:ss'),
           dateFormat(markerTimestampFrom.timestamp, 'yyyy-mm-dd-HH-MM-ss')
         )
       )
@@ -276,7 +275,7 @@ export default {
         getMarkerPopUp(
           'End point',
           this.chosenDeviceId,
-          new Date(markerTimestampTo.timestamp).toLocaleString('pl'),
+          new Date(markerTimestampTo.timestamp).toLocaleString(),
           dateFormat(markerTimestampTo.timestamp, 'yyyy-mm-dd-HH-MM-ss')
         )
       )
