@@ -101,6 +101,7 @@ export default {
       this.reloadPreviousAndNext()
     },
     show () {
+      this.setIsLoading(false)
       this.$modal.show('device-details')
     },
     hide () {
@@ -136,7 +137,8 @@ export default {
       })
     },
     ...mapMutations([
-      'setChosenOption'
+      'setChosenOption',
+      'setIsLoading'
     ])
   },
   computed: {

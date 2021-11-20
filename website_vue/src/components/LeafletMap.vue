@@ -52,7 +52,8 @@ export default {
       chosenDeviceMarker: null,
       polyline: null,
       marker_from: null,
-      marker_to: null
+      marker_to: null,
+      getLocalizationInterval: null
     }
   },
   computed: {
@@ -92,10 +93,14 @@ export default {
     chosenOption: {
       deep: true,
       handler (newValue) {
+        this.chosenDeviceMarker = null
+        this.setIsLoading(true)
         this.load_markers_from_history(false)
 
         if (this.sortedMarkersFromHistory.length && newValue === 'history') {
           this.draw_polyline(true)
+        } else if (newValue === 'home') {
+          this.directToClientLocalization()
         }
       }
     },
@@ -117,40 +122,66 @@ export default {
       deep: true,
       handler (newValue) {
         if (newValue === null || newValue === '') {
+          clearInterval(this.getLocalizationInterval)
+          this.getLocalizationInterval = null
           return
         }
 
-        if (newValue !== null && this.userMarker != null) {
-          this.userMarker.remove()
-        }
-
-        if (this.chosenDeviceMarker) {
-          this.chosenDeviceMarker.remove()
-        }
-
         this.setIsLoading(true)
-        this.clear_path_elements()
-        axios.get(env.API_URL + '/get_localization?device_id=' + newValue).then(response => {
-          this.setIsDeviceIdCorrect(true)
-          let localization = JSON.parse(response.data)
-          let latLng = [localization.lat, localization.lon]
-          let greenIcon = getMarkerIcon('green')
-          this.chosenDeviceMarker = L.marker(latLng, {icon: greenIcon}).addTo(this.map)
-          setZIndex(this.map, this.chosenDeviceMarker, 102)
-          this.chosenDeviceMarker.bindPopup(
-            getMarkerPopUp(
-              'Chosen device',
-              newValue,
-              localization.timestamp_str
-            )
-          )
-          this.map.setView(latLng, 16)
-          this.setIsLoading(false)
-        })
+
+        if (this.getLocalizationInterval === null) {
+          this.getLocalizationInterval = setInterval(this.showCurrentLocationOfDevice, 2000)
+        }
       }
     }
   },
   methods: {
+    showCurrentLocationOfDevice () {
+      if (this.chosenOption !== 'device') {
+        return
+      }
+
+      let deviceId = this.chosenDeviceId
+
+      if (deviceId !== null && this.userMarker != null) {
+        this.userMarker.remove()
+      }
+
+      this.clear_path_elements()
+      axios.get(env.API_URL + '/get_localization?device_id=' + deviceId).then(response => {
+        this.setIsDeviceIdCorrect(true)
+        let localization = JSON.parse(response.data)
+        let latLng = [localization.lat, localization.lon]
+        let greenIcon = getMarkerIcon('green')
+        let devicedMoved = true
+
+        if (this.chosenDeviceMarker) {
+          devicedMoved = !this.chosenDeviceMarker.getLatLng().equals(latLng)
+
+          if (devicedMoved) {
+            this.chosenDeviceMarker.remove()
+            this.chosenDeviceMarker = L.marker(latLng, {icon: greenIcon}).addTo(this.map)
+          }
+        } else {
+          this.chosenDeviceMarker = L.marker(latLng, {icon: greenIcon}).addTo(this.map)
+        }
+
+        setZIndex(this.map, this.chosenDeviceMarker, 102)
+        this.chosenDeviceMarker.bindPopup(
+          getMarkerPopUp(
+            'Chosen device',
+            deviceId,
+            localization.timestamp_str
+          )
+        )
+
+        if (devicedMoved) {
+          this.map.setView(latLng, 16)
+        }
+
+        this.setIsLoading(false)
+      })
+    },
     directToClientLocalization () {
       this.map.locate({setView: true, maxZoom: 16})
       this.map.on('locationfound', (e) => {
@@ -160,6 +191,7 @@ export default {
       this.map.on('locationerror', (error) => {
         alert(error.message)
       })
+      this.setIsLoading(false)
     },
     addBasicMarker (map, latLng) {
       this.userMarker = L.marker(latLng)

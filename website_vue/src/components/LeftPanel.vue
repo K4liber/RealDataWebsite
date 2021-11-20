@@ -47,12 +47,8 @@ export default {
   watch: {
     chosenDeviceId: {
       deep: true,
-      handler (newValue) {
-        if (newValue !== null && newValue !== '' && this.isDeviceIdCorrect) {
-          this.reloadOptions()
-        } else {
-          this.options = ['device']
-        }
+      handler () {
+        this.reloadOptions()
       }
     },
     chosenOption: {
@@ -72,15 +68,22 @@ export default {
   },
   methods: {
     reloadOptions () {
-      this.options = [
-        'device',
-        'home',
-        'view',
-        'history',
-        'calendar'
-      ]
+      let deviceId = this.chosenDeviceId
+
+      if (deviceId !== null && deviceId !== '' && this.isDeviceIdCorrect) {
+        this.options = [
+          'device',
+          'home',
+          'view',
+          'history',
+          'calendar'
+        ]
+      } else {
+        this.options = ['device', 'home']
+      }
     },
     chooseOption: function (option) {
+      this.reloadOptions()
       let optionsNewOrder = this.options.slice(0, this.options.length)
       let chosenIndex = this.options.indexOf(option)
       optionsNewOrder[chosenIndex] = this.options[0]
