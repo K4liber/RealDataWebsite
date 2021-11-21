@@ -38,7 +38,7 @@ export default {
         if (newValue !== null) {
           this.setChosenDeviceId(newValue)
           this.setChosenOption('history')
-          this.$router.push('/device/' + newValue)
+          this.$router.push('/history/' + newValue)
         }
       }
     }

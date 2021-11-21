@@ -94,7 +94,12 @@ export default {
       deep: true,
       handler (newValue) {
         this.chosenDeviceMarker = null
-        this.setIsLoading(true)
+        let optionsWithoutLoading = ['calendar', 'home']
+
+        if (!optionsWithoutLoading.includes(newValue) && this.chosenDeviceId) {
+          this.setIsLoading(true)
+        }
+
         this.load_markers_from_history(false)
 
         if (this.sortedMarkersFromHistory.length && newValue === 'history') {
@@ -183,6 +188,13 @@ export default {
       })
     },
     directToClientLocalization () {
+      this.clear_path_elements()
+
+      if (this.chosenDeviceMarker) {
+        this.chosenDeviceMarker.remove()
+        this.chosenDeviceMarker = null
+      }
+
       this.map.locate({setView: true, maxZoom: 16})
       this.map.on('locationfound', (e) => {
         this.map.setView(e.latlng, 13)
@@ -196,12 +208,20 @@ export default {
     addBasicMarker (map, latLng) {
       this.userMarker = L.marker(latLng)
       this.userMarker.addTo(map)
-      let today = new Date()
+      let now = new Date()
       this.userMarker.bindPopup(
-        getMarkerPopUp('Your device', null, today.toLocaleString('pl'))
+        getMarkerPopUp('Your device', null, dateFormat(now, 'yyyy/mm/dd HH:MM:ss'))
       )
     },
     load_markers_from_history (reload = false) {
+      if (this.chosenDeviceMarker) {
+        this.chosenDeviceMarker.remove()
+      }
+
+      if (this.userMarker) {
+        this.userMarker.remove()
+      }
+
       if (this.sortedMarkersFromHistory.length && reload === false) {
         return
       }
@@ -253,7 +273,7 @@ export default {
       }
     },
     draw_polyline (reload = false) {
-      if (this.sliderFrom == null || this.sliderTo == null || this.pathMode === false) {
+      if (this.chosenOption !== 'history' || this.sliderFrom == null || this.sliderTo == null || this.pathMode === false) {
         return
       }
 

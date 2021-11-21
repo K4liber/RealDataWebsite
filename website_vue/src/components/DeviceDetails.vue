@@ -108,7 +108,7 @@ export default {
       this.$modal.hide('device-details')
     },
     closeModal () {
-      this.setChosenOption('home')
+      this.setChosenOption('device')
     },
     getCurrentViewSrc () {
       return env.API_URL + '/view?device_id=' + this.chosenDeviceId +

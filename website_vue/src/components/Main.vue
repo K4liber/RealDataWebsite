@@ -39,11 +39,14 @@ export default {
     chosenOption: {
       deep: true,
       handler (newValue) {
-        if (newValue === 'home') {
-          this.$router.push('/home')
-        } else if (newValue === 'history') {
+        if (newValue === 'history') {
           this.load_history(false)
         }
+
+        let deviceIdFromURL = this.$route.params.device_id
+        let deviceId = this.chosenDeviceId || deviceIdFromURL
+        let params = deviceId ? '/' + deviceId : ''
+        this.$router.push('/' + newValue + params)
       }
     }
   },
@@ -79,6 +82,8 @@ export default {
               return
             }
 
+            this.setIsDeviceIdCorrect(true)
+
             for (let index = 0; index < localizations.length; index++) {
               let element = localizations[index]
               history.push(
@@ -100,19 +105,23 @@ export default {
     ...mapMutations([
       'setLocalizationHistory',
       'setIsLoading',
-      'setChosenDeviceId'
+      'setChosenDeviceId',
+      'setIsDeviceIdCorrect',
+      'setChosenOption'
     ])
   },
   mounted: function () {
     if (this.$route.matched.length > 0) {
       let firstMatched = this.$route.matched[0]
 
-      if (firstMatched.name === 'device_id') {
+      if (firstMatched.name) {
         let deviceIdFromURL = this.$route.params.device_id
 
-        if (deviceIdFromURL !== this.chosenDeviceId) {
+        if (deviceIdFromURL && deviceIdFromURL !== this.chosenDeviceId) {
           this.setChosenDeviceId(deviceIdFromURL)
         }
+
+        this.setChosenOption(firstMatched.name)
       }
     }
   }

@@ -68,16 +68,22 @@ export default {
   },
   methods: {
     reloadOptions () {
-      let deviceId = this.chosenDeviceId
-
-      if (deviceId !== null && deviceId !== '' && this.isDeviceIdCorrect) {
-        this.options = [
+      if (this.isDeviceIdCorrect) {
+        let options = [
           'device',
           'home',
           'view',
           'history',
           'calendar'
         ]
+
+        if (this.chosenOption) {
+          let chosenIndex = options.indexOf(this.chosenOption)
+          options[chosenIndex] = options[0]
+          options[0] = this.chosenOption
+        }
+
+        this.options = options
       } else {
         this.options = ['device', 'home']
       }

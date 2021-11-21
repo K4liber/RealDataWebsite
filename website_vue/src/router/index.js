@@ -9,12 +9,27 @@ export default new Router({
   routes: [
     {
       path: '/',
-      name: 'Main',
+      name: 'home',
       component: Main
     },
     {
-      path: '/device/:device_id',
-      name: 'device_id',
+      path: '/device/:device_id?',
+      name: 'device',
+      component: Main
+    },
+    {
+      path: '/history/:device_id',
+      name: 'history',
+      component: Main
+    },
+    {
+      path: '/calendar/:device_id',
+      name: 'calendar',
+      component: Main
+    },
+    {
+      path: '/view/:device_id',
+      name: 'view',
       component: Main
     },
     {
