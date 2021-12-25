@@ -13,6 +13,11 @@ export default new Router({
       component: Main
     },
     {
+      path: '/home/:device_id?',
+      name: 'home',
+      component: Main
+    },
+    {
       path: '/device/:device_id?',
       name: 'device',
       component: Main

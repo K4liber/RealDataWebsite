@@ -20,9 +20,14 @@ export default new Vuex.Store({
     rangeTo: null,
     sliderFrom: null,
     sliderTo: null,
-    isDeviceIdCorrect: false
+    isDeviceIdCorrect: false,
+    isLocationError: false
   },
   mutations: {
+    setIsLocationError (state, isLocationError) {
+      if (state.debug) console.log('setIsLocationError triggered')
+      state.isLocationError = isLocationError
+    },
     setMap (state, map) {
       if (state.debug) console.log('setMap triggered')
       state.map = map
@@ -139,6 +144,10 @@ export default new Vuex.Store({
     isDeviceIdCorrect: state => {
       if (state.debug) console.log('getters isDeviceIdCorrect triggered')
       return state.isDeviceIdCorrect
+    },
+    isLocationError: state => {
+      if (state.debug) console.log('getters isLocationError triggered')
+      return state.isLocationError
     }
   }
 })

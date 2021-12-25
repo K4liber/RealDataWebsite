@@ -71,7 +71,8 @@ export default {
       'rangeFrom',
       'rangeTo',
       'sliderFrom',
-      'sliderTo'
+      'sliderTo',
+      'isLocationError'
     ])
   },
   watch: {
@@ -93,7 +94,6 @@ export default {
     chosenOption: {
       deep: true,
       handler (newValue) {
-        this.chosenDeviceMarker = null
         let optionsWithoutLoading = ['calendar', 'home']
 
         if (!optionsWithoutLoading.includes(newValue) && this.chosenDeviceId) {
@@ -103,97 +103,99 @@ export default {
         this.load_markers_from_history(false)
 
         if (this.sortedMarkersFromHistory.length && newValue === 'history') {
+          this.clear_element(this.chosenDeviceMarker)
           this.draw_polyline(true)
         } else if (newValue === 'home') {
+          this.clear_element(this.chosenDeviceMarker)
           this.directToClientLocalization()
+        } else if (newValue === 'device') {
+          this.startCurrentLocationOfDeviceInterval(true)
         }
       }
     },
     sliderFrom: {
       deep: true,
       handler (newValue) {
-        this.clear_path_elements()
         this.draw_polyline(true)
       }
     },
     sliderTo: {
       deep: true,
       handler (newValue) {
-        this.clear_path_elements()
         this.draw_polyline(true)
       }
     },
     chosenDeviceId: {
       deep: true,
-      handler (newValue) {
-        if (newValue === null || newValue === '') {
-          clearInterval(this.getLocalizationInterval)
-          this.getLocalizationInterval = null
-          return
-        }
-
-        this.setIsLoading(true)
-
-        if (this.getLocalizationInterval === null) {
-          this.getLocalizationInterval = setInterval(this.showCurrentLocationOfDevice, 2000)
-        }
+      handler () {
+        this.startCurrentLocationOfDeviceInterval()
       }
     }
   },
   methods: {
+    startCurrentLocationOfDeviceInterval (reload) {
+      if (this.chosenDeviceId === null || this.chosenDeviceId === '') {
+        clearInterval(this.getLocalizationInterval)
+        this.getLocalizationInterval = null
+        return
+      }
+
+      this.setIsLoading(true)
+
+      if (reload) {
+        clearInterval(this.getLocalizationInterval)
+        this.getLocalizationInterval = null
+      }
+
+      if (this.getLocalizationInterval === null) {
+        this.getLocalizationInterval = setInterval(this.showCurrentLocationOfDevice, 2000)
+      }
+    },
     showCurrentLocationOfDevice () {
       if (this.chosenOption !== 'device') {
         return
       }
 
       let deviceId = this.chosenDeviceId
+      let leafletMap = this
 
-      if (deviceId !== null && this.userMarker != null) {
-        this.userMarker.remove()
-      }
-
-      this.clear_path_elements()
       axios.get(env.API_URL + '/get_localization?device_id=' + deviceId).then(response => {
+        if (leafletMap.chosenOption !== 'device') {
+          return
+        }
+
         this.setIsDeviceIdCorrect(true)
         let localization = JSON.parse(response.data)
         let latLng = [localization.lat, localization.lon]
         let greenIcon = getMarkerIcon('green')
-        let devicedMoved = true
+        let devicedMoved = (localization.lat !== null && leafletMap.chosenDeviceMarker !== null)
+          ? !leafletMap.chosenDeviceMarker.getLatLng().equals(latLng) : true
 
-        if (this.chosenDeviceMarker) {
-          devicedMoved = !this.chosenDeviceMarker.getLatLng().equals(latLng)
+        if (devicedMoved && localization.lat !== null) {
+          leafletMap.clear_all_elements()
+          leafletMap.chosenDeviceMarker = localization.lat !== null ? L.marker(latLng, {icon: greenIcon}).addTo(leafletMap.map) : null
 
-          if (devicedMoved) {
-            this.chosenDeviceMarker.remove()
-            this.chosenDeviceMarker = L.marker(latLng, {icon: greenIcon}).addTo(this.map)
+          if (leafletMap.chosenDeviceMarker !== null) {
+            setZIndex(leafletMap.map, leafletMap.chosenDeviceMarker, 102)
+            leafletMap.map.setView(latLng, 16)
           }
-        } else {
-          this.chosenDeviceMarker = L.marker(latLng, {icon: greenIcon}).addTo(this.map)
         }
 
-        setZIndex(this.map, this.chosenDeviceMarker, 102)
-        this.chosenDeviceMarker.bindPopup(
-          getMarkerPopUp(
-            'Chosen device',
-            deviceId,
-            localization.timestamp_str
+        if (leafletMap.chosenDeviceMarker !== null) {
+          leafletMap.chosenDeviceMarker.bindPopup(
+            getMarkerPopUp(
+              'Chosen device',
+              deviceId,
+              localization.timestamp_str
+            )
           )
-        )
 
-        if (devicedMoved) {
-          this.map.setView(latLng, 16)
+          leafletMap.setIsLoading(false)
         }
-
-        this.setIsLoading(false)
       })
     },
     directToClientLocalization () {
-      this.clear_path_elements()
-
-      if (this.chosenDeviceMarker) {
-        this.chosenDeviceMarker.remove()
-        this.chosenDeviceMarker = null
-      }
+      this.clear_all_elements()
 
       this.map.locate({setView: true, maxZoom: 16})
       this.map.on('locationfound', (e) => {
@@ -201,7 +203,10 @@ export default {
         this.addBasicMarker(this.map, e.latlng)
       })
       this.map.on('locationerror', (error) => {
-        alert(error.message)
+        if (!this.isLocationError) {
+          alert(error.message)
+          this.setIsLocationError(true)
+        }
       })
       this.setIsLoading(false)
     },
@@ -214,18 +219,11 @@ export default {
       )
     },
     load_markers_from_history (reload = false) {
-      if (this.chosenDeviceMarker) {
-        this.chosenDeviceMarker.remove()
-      }
-
-      if (this.userMarker) {
-        this.userMarker.remove()
-      }
-
       if (this.sortedMarkersFromHistory.length && reload === false) {
         return
       }
 
+      this.clear_all_elements()
       let redIcon = getCircleIcon('red')
       this.totalDistance = 0
       let tempSortedMarkersFromHistory = []
@@ -259,25 +257,29 @@ export default {
 
       this.sortedMarkersFromHistory = tempSortedMarkersFromHistory
     },
-    clear_path_elements () {
-      if (this.polyline != null) {
-        this.polyline.remove()
+    clear_element (element) {
+      if (element != null) {
+        element.remove()
       }
-
-      if (this.marker_from != null) {
-        this.marker_from.remove()
-      }
-
-      if (this.marker_to != null) {
-        this.marker_to.remove()
-      }
+    },
+    clear_all_elements () {
+      this.clear_element(this.polyline)
+      this.polyline = null
+      this.clear_element(this.marker_from)
+      this.marker_from = null
+      this.clear_element(this.marker_to)
+      this.marker_to = null
+      this.clear_element(this.chosenDeviceMarker)
+      this.chosenDeviceMarker = null
+      this.clear_element(this.userMarker)
+      this.userMarker = null
     },
     draw_polyline (reload = false) {
       if (this.chosenOption !== 'history' || this.sliderFrom == null || this.sliderTo == null || this.pathMode === false) {
         return
       }
 
-      this.clear_path_elements()
+      this.clear_all_elements()
       let markersTimestampsInRange = []
       this.totalDistance = 0
 
@@ -303,10 +305,6 @@ export default {
 
       if (markersTimestampsInRange.length < 2) {
         return
-      }
-
-      if (this.chosenDeviceMarker) {
-        this.chosenDeviceMarker.remove()
       }
 
       let markerTimestampFrom = markersTimestampsInRange[0]
@@ -347,7 +345,8 @@ export default {
     ...mapMutations([
       'setMap',
       'setIsDeviceIdCorrect',
-      'setIsLoading'
+      'setIsLoading',
+      'setIsLocationError'
     ])
   }
 }
