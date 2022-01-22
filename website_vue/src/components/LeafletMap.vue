@@ -53,7 +53,10 @@ export default {
       polyline: null,
       marker_from: null,
       marker_to: null,
-      getLocalizationInterval: null
+      timestamp_from: null,
+      timestamp_to: null,
+      getLocalizationInterval: null,
+      totalDistance: 0
     }
   },
   computed: {
@@ -62,6 +65,22 @@ export default {
     },
     sliderFromMilisecond () {
       return this.sliderFrom.valueOf()
+    },
+    polylineString () {
+      let timeIntervalMiliseconds = Math.abs(this.timestamp_to - this.timestamp_from)
+      const second = 1000
+      const minute = 60 * second
+      const hour = 60 * minute
+      const day = hour * 24
+      const timeIntervalDays = Math.floor(timeIntervalMiliseconds / (day))
+      timeIntervalMiliseconds = timeIntervalMiliseconds - timeIntervalDays * day
+      const timeIntervalHours = Math.floor(timeIntervalMiliseconds / (hour))
+      timeIntervalMiliseconds = timeIntervalMiliseconds - timeIntervalHours * hour
+      const timeIntervalMinutes = Math.floor(timeIntervalMiliseconds / (minute))
+      let timeIntervalString = timeIntervalDays > 0 ? (' ' + timeIntervalDays + 'd') : ''
+      timeIntervalString = timeIntervalString + (timeIntervalHours > 0 ? (' ' + timeIntervalHours + 'h') : '')
+      timeIntervalString = timeIntervalString + (timeIntervalMinutes > 0 ? (' ' + timeIntervalMinutes + 'm') : '')
+      return '<b>Distance:</b> ' + (this.totalDistance / 1000.0).toFixed(2) + ' km<br><b>Time:</b> ' + timeIntervalString
     },
     ...mapGetters([
       'map',
@@ -84,7 +103,7 @@ export default {
           this.load_markers_from_history(true)
 
           if (this.sortedMarkersFromHistory.length && this.chosenOption === 'history') {
-            this.draw_polyline(true)
+            this.draw_polyline()
           }
 
           this.setIsLoading(false)
@@ -104,7 +123,7 @@ export default {
 
         if (this.sortedMarkersFromHistory.length && newValue === 'history') {
           this.clear_element(this.chosenDeviceMarker)
-          this.draw_polyline(true)
+          this.draw_polyline()
         } else if (newValue === 'home') {
           this.clear_element(this.chosenDeviceMarker)
           this.directToClientLocalization()
@@ -116,13 +135,13 @@ export default {
     sliderFrom: {
       deep: true,
       handler (newValue) {
-        this.draw_polyline(true)
+        this.draw_polyline()
       }
     },
     sliderTo: {
       deep: true,
       handler (newValue) {
-        this.draw_polyline(true)
+        this.draw_polyline()
       }
     },
     chosenDeviceId: {
@@ -274,7 +293,7 @@ export default {
       this.clear_element(this.userMarker)
       this.userMarker = null
     },
-    draw_polyline (reload = false) {
+    draw_polyline () {
       if (this.chosenOption !== 'history' || this.sliderFrom == null || this.sliderTo == null || this.pathMode === false) {
         return
       }
@@ -309,6 +328,7 @@ export default {
 
       let markerTimestampFrom = markersTimestampsInRange[0]
       this.marker_from = markerTimestampFrom.marker
+      this.timestamp_from = markerTimestampFrom.timestamp
       this.marker_from.bindPopup(
         getMarkerPopUp(
           'Start point',
@@ -320,6 +340,7 @@ export default {
       this.marker_from.addTo(this.map)
       let markerTimestampTo = markersTimestampsInRange[markersTimestampsInRange.length - 1]
       this.marker_to = markerTimestampTo.marker
+      this.timestamp_to = markerTimestampTo.timestamp
       this.marker_to.setIcon(getCircleIcon('green'))
       this.marker_to.bindPopup(
         getMarkerPopUp(
@@ -337,7 +358,7 @@ export default {
         opacity: 0.5,
         smoothFactor: 1
       })
-      this.polyline.bindPopup(this.totalDistanceString)
+      this.polyline.bindPopup(this.polylineString)
       this.polyline.addTo(this.map)
       let group = L.featureGroup(Array.from(markersTimestampsInRange, (markerTimestamp) => markerTimestamp.marker))
       this.map.fitBounds(group.getBounds(), {padding: [50, 50]})
