@@ -23,7 +23,7 @@ export default new Router({
       component: Main
     },
     {
-      path: '/history/:device_id',
+      path: '/history/:device_id/:interval?',
       name: 'history',
       component: Main
     },

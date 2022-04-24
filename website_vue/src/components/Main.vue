@@ -16,6 +16,7 @@ import {mapGetters, mapMutations} from 'vuex'
 import {Localization} from '../data-class'
 import axios from 'axios'
 import {env} from '../../config/env'
+import dateFormat from 'dateformat'
 
 export default {
   name: 'Main',
@@ -32,25 +33,48 @@ export default {
       'chosenOption',
       'isDeviceIdCorrect',
       'dateTimeStringRange',
-      'localizationHistory'
+      'localizationHistory',
+      'sliderFrom',
+      'sliderTo'
     ])
   },
   watch: {
+    sliderFrom: {
+      deep: true,
+      handler () {
+        this.update_router()
+      }
+    },
+    sliderTo: {
+      deep: true,
+      handler () {
+        this.update_router()
+      }
+    },
     chosenOption: {
       deep: true,
-      handler (newValue) {
-        if (newValue === 'history') {
-          this.load_history(false)
-        }
-
-        let deviceIdFromURL = this.$route.params.device_id
-        let deviceId = this.chosenDeviceId || deviceIdFromURL
-        let params = deviceId ? '/' + deviceId : ''
-        this.$router.push('/' + newValue + params)
+      handler () {
+        this.update_router()
       }
     }
   },
   methods: {
+    sliders_to_string () {
+      return dateFormat(this.sliderFrom, 'yyyy-mm-dd-HH-MM-ss') + ':' + dateFormat(this.sliderTo, 'yyyy-mm-dd-HH-MM-ss')
+    },
+    update_router () {
+      let option = this.chosenOption
+
+      if (option === 'history') {
+        this.load_history(false)
+      }
+
+      let deviceIdFromURL = this.$route.params.device_id
+      let deviceId = this.chosenDeviceId || deviceIdFromURL
+      let params = deviceId ? '/' + deviceId : ''
+      params = this.sliderFrom ? params + '/' + this.sliders_to_string() : params
+      this.$router.push('/' + option + params)
+    },
     async load_history (reload) {
       if (reload) {
         this.setLocalizationHistory([])
