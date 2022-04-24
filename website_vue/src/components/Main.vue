@@ -32,21 +32,27 @@ export default {
       'chosenOption',
       'isDeviceIdCorrect',
       'dateTimeStringRange',
-      'localizationHistory'
+      'localizationHistory',
+      'sliderFrom',
+      'sliderTo'
     ])
   },
   watch: {
     chosenOption: {
       deep: true,
-      handler (newValue) {
-        if (newValue === 'history') {
+      handler (newOption) {
+        if (typeof newOption === 'undefined') {
+          return
+        }
+
+        if (newOption === 'history') {
           this.load_history(false)
         }
 
         let deviceIdFromURL = this.$route.params.device_id
         let deviceId = this.chosenDeviceId || deviceIdFromURL
         let params = deviceId ? '/' + deviceId : ''
-        this.$router.push('/' + newValue + params)
+        this.$router.push('/' + newOption + params)
       }
     }
   },

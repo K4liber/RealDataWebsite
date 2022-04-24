@@ -27,21 +27,42 @@ export default {
   },
   computed: {
     ...mapGetters([
+      'sliderTo',
+      'sliderFrom',
       'historyStartDate',
-      'historyStopDate'
+      'historyStopDate',
+      'chosenOption'
     ])
   },
   mounted: function () {
     this.reload_slider()
   },
   methods: {
+    sliders_to_string () {
+      return this.sliderFrom.toISOString() + '_' + this.sliderTo.toISOString()
+    },
+    update_router () {
+      let option = this.chosenOption
+      let deviceIdFromURL = this.$route.params.device_id
+      let deviceId = this.chosenDeviceId || deviceIdFromURL
+      let params = deviceId ? '/' + deviceId : ''
+      params = (this.sliderFrom && deviceId) ? params + '/' + this.sliders_to_string() : params
+      this.$router.push('/' + option + params)
+    },
     reload_slider () {
-      if (this.historyStartDate === null || this.historyStopDate === null) {
-        return
+      if (this.$route.params.interval) {
+        let interval = this.$route.params.interval.split('_')
+        this.datetimeFrom = new Date(interval[0])
+        this.datetimeTo = new Date(interval[1])
+      } else {
+        if (this.historyStartDate === null || this.historyStopDate === null) {
+          return
+        }
+
+        this.datetimeFrom = this.historyStartDate
+        this.datetimeTo = this.historyStopDate
       }
 
-      this.datetimeFrom = this.historyStartDate
-      this.datetimeTo = this.historyStopDate
       $('#slider-from').html(this.datetimeFrom.toLocaleString('pl'))
       $('#slider-to').html(this.datetimeTo.toLocaleString('pl'))
       let fromVal = this.datetimeFrom / 1000
@@ -87,6 +108,18 @@ export default {
     ])
   },
   watch: {
+    sliderFrom: {
+      deep: true,
+      handler () {
+        this.update_router()
+      }
+    },
+    sliderTo: {
+      deep: true,
+      handler () {
+        this.update_router()
+      }
+    },
     historyStartDate: {
       deep: true,
       handler () {
