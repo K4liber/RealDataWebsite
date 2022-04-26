@@ -41,7 +41,7 @@ module.exports = {
     cacheBusting: true,
 
     cssSourceMap: true,
-    proxy: 'https://ucanthide.link',
+    proxy: 'https://worldcitizen.link',
   },
 
   build: {
