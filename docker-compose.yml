@@ -3,8 +3,10 @@ services:
   website_implementation:
     container_name: website_implementation
     environment:
-      - API_URL=http://35.180.181.135:5000
-    build: ./website_vue
+      - API_URL=http://localhost:5000
+    build: ./website_angular
+    ports:
+      - "3000:80"
   nginx:
     container_name: website_nginx
     build: ./nginx
